@@ -2,3 +2,6 @@ __pycache__/
 *.db
 *.db-wal
 *.db-shm
+
+# versões de trabalho com dados pessoais: nunca publicar
+index2.html
