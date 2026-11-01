@@ -1063,15 +1063,11 @@ table.shell-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 
       </li>
     </ul>
 
-    <div class="sidebar-db">
+    <div class="sidebar-db admin-only">
       <div class="db-title">💾 Banco de Dados</div>
-      <button class="btn-db" id="btn-export">
+      <button class="btn-db" id="btn-export" title="Baixa uma cópia de segurança (JSON) dos dados do banco">
         <span>⬇️</span> Exportar Dados
       </button>
-      <button class="btn-db" id="btn-import-trigger">
-        <span>⬆️</span> Importar Dados
-      </button>
-      <input type="file" id="file-import" accept=".json" style="display: none;">
     </div>
   </aside>
 
@@ -3309,9 +3305,12 @@ function imprimirRelatorio() {
 }
 
 // -------------------------------------------------------------
-// BACKUP / EXPORTAÇÃO / IMPORTAÇÃO JSON
+// BACKUP: EXPORTAÇÃO JSON (só administradores)
+// A importação foi removida: os dados são editados direto no sistema
+// e ficam no banco da VPS (com histórico e backup diário).
 // -------------------------------------------------------------
 function exportarDadosJSON() {
+  if (!usuarioAdmin) { alert('⚠️ Apenas administradores podem exportar os dados.'); return; }
   const dataStr = JSON.stringify(STATE, null, 2);
   const blob = new Blob([dataStr], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -3322,55 +3321,6 @@ function exportarDadosJSON() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
-
-function importarDadosJSON(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  if (!file.name.toLowerCase().endsWith('.json')) {
-    alert("Erro: Selecione um arquivo com extensão válida .json.");
-    event.target.value = "";
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const parsed = JSON.parse(e.target.result);
-
-      if (!parsed || !Array.isArray(parsed.funcionarios)) {
-        throw new Error("Formato inválido: o arquivo não contém a lista de 'funcionarios'.");
-      }
-
-      const qFunc = parsed.funcionarios.length;
-      const qNr = Array.isArray(parsed.treinamentos) ? parsed.treinamentos.length : 0;
-      const qAso = Array.isArray(parsed.asos) ? parsed.asos.length : 0;
-      const qVac = Array.isArray(parsed.vacinas) ? parsed.vacinas.length : 0;
-
-      const confirmMsg = `ATENÇÃO: A importação irá SUBSTITUIR os dados atuais!\n\nResumo do arquivo:\n- Funcionários: ${qFunc}\n- Treinamentos NR: ${qNr}\n- Exames ASO: ${qAso}\n- Vacinas: ${qVac}\n\n⚠️ Os dados do banco serão substituídos para TODOS os usuários.\n\nDeseja continuar com a substituição?`;
-
-      if (confirm(confirmMsg)) {
-        // Normalização de campos faltantes
-        parsed.funcionarios.forEach((f, i) => {
-          if (!f.id) f.id = `f_imp_${Date.now()}_${i}`;
-          if (!f.status) f.status = "Ativo";
-          if (!f.demissao) f.demissao = "";
-        });
-
-        STATE = normalizarEstado(parsed);
-
-        saveState();
-        renderAll();
-        alert(`✅ Banco de dados importado com sucesso!\n${qFunc} colaboradores carregados.`);
-      }
-    } catch (err) {
-      alert(`Falha ao importar arquivo JSON:\n${err.message}`);
-    } finally {
-      event.target.value = "";
-    }
-  };
-  reader.readAsText(file);
 }
 
 // -------------------------------------------------------------
@@ -3539,9 +3489,6 @@ function setupEventHandlers() {
 
   // Backup JSON
   document.getElementById('btn-export').addEventListener('click', exportarDadosJSON);
-  const fileInput = document.getElementById('file-import');
-  document.getElementById('btn-import-trigger').addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', importarDadosJSON);
 
   // Login e Acesso
   document.getElementById('form-login').addEventListener('submit', fazerLogin);
