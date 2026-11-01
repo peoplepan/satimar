@@ -510,12 +510,21 @@ let versaoServidor=0;
 let salvando=false,salvarDeNovo=false,pendente=false;
 let usuarioAtual='';
 function estadoVazio(){return{funcionarios:[],treinamentos:[],asos:[],vacinas:[]};}
+/* Aceita também o formato de outra versão do sistema
+   (funcionarioId, treinamento, vacina, validadeAnos) e converte para o atual. */
+function renomearCampos(lista,mapa){
+  return(Array.isArray(lista)?lista:[]).filter(x=>x&&typeof x==='object').map(x=>{
+    const o=Object.assign({},x);
+    mapa.forEach(([atual,outro])=>{if(o[atual]==null&&o[outro]!=null)o[atual]=o[outro];delete o[outro];});
+    return o;
+  });
+}
 function normalizarEstado(d){
   return{
     funcionarios:(Array.isArray(d.funcionarios)?d.funcionarios:[]).filter(f=>f&&typeof f==='object').map(f=>Object.assign({nasc:'',adm:'',cargo:'',obra:'',status:'Ativo',demissao:''},f,{nome:f.nome||'Sem nome'})),
-    treinamentos:Array.isArray(d.treinamentos)?d.treinamentos:[],
-    asos:Array.isArray(d.asos)?d.asos:[],
-    vacinas:Array.isArray(d.vacinas)?d.vacinas:[]
+    treinamentos:renomearCampos(d.treinamentos,[['func','funcionarioId'],['nr','treinamento'],['val','validadeAnos']]),
+    asos:renomearCampos(d.asos,[['func','funcionarioId'],['val','validadeAnos']]),
+    vacinas:renomearCampos(d.vacinas,[['func','funcionarioId'],['nome','vacina'],['val','validadeAnos']])
   };
 }
 async function api(metodo,url,corpo){
