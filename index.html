@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Controle de Funcionários</title>
+<style>
+ 
+:root{--azul:#1e3a5f;--teal:#0d9488;--bg:#f1f5f9;--vermelho:#dc2626;--laranja:#ea580c;--amarelo:#ca8a04;--verde:#16a34a;--cinza:#64748b;--borda:#e2e8f0}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+body{background:var(--bg);color:#0f172a;font-size:14px}
+.hidden{display:none!important}
+.sidebar{width:230px;background:#1e3a5f;color:#fff;position:fixed;top:0;left:0;bottom:0;overflow-y:auto;padding:18px 0 0;display:flex;flex-direction:column}
+.sidebar h1{font-size:15px;font-weight:700;padding:0 16px 3px;line-height:1.25}
+.sidebar .sub{font-size:11px;color:#94a3b8;padding:0 16px 14px;letter-spacing:.03em}
+.nav-item{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:13.5px;color:#e2e8f0;cursor:pointer;border-left:3px solid transparent;user-select:none;transition:background .12s}
+.nav-item:hover{background:rgba(255,255,255,.07)}
+.nav-item.active{background:rgba(255,255,255,.12);border-left:3px solid #5eead4;color:#fff;font-weight:600}
+.nav-item span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{margin-left:auto;background:var(--vermelho);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;min-width:20px;text-align:center}
+.badge.zero{background:#475569}
+.db-section{margin-top:auto;border-top:1px solid rgba(255,255,255,.15);padding:14px 12px}
+.db-section h3{font-size:10.5px;letter-spacing:.09em;color:#94a3b8;margin-bottom:10px;font-weight:700}
+.db-section .btn{width:100%;margin-bottom:8px;font-size:12.5px;padding:8px 10px;background:#334e6e}
+.db-section .btn:hover{background:#415f82}
+.main{margin-left:230px;padding:24px 30px;min-height:100vh}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+.topbar h2{font-size:22px;color:var(--azul)}
+.topbar .date{font-size:13px;color:var(--cinza);font-weight:600}
+.card{background:#fff;border-radius:12px;border:1px solid var(--borda);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:18px}
+.card h3{font-size:15px;color:var(--azul);margin-bottom:14px}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.card-head h3{margin-bottom:0}
+.dica{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:10px;padding:11px 16px;font-size:13px;font-weight:600;margin-bottom:18px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:18px}
+.kpi{background:#fff;border-radius:12px;border:1px solid var(--borda);padding:16px 16px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05);cursor:pointer;position:relative;transition:transform .15s,box-shadow .15s}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(15,23,42,.14)}
+.kpi .num{font-size:26px;font-weight:700;color:var(--azul);line-height:1.1}
+.kpi .lbl{font-size:12px;color:var(--cinza);margin-top:4px;line-height:1.3}
+.kpi .arrow{position:absolute;top:10px;right:12px;font-size:14px;color:var(--teal);opacity:0;transition:opacity .15s}
+.kpi:hover .arrow{opacity:1}
+.kpi.green{border-left:4px solid var(--verde)}
+.kpi.green .num{color:var(--verde)}
+.kpi.alert{border-left:4px solid var(--amarelo)}
+.kpi.alert .num{color:var(--amarelo)}
+.alerts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.alert-card{border-radius:12px;padding:14px 16px;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.alert-card h4{font-size:12px;letter-spacing:.05em;margin-bottom:8px;font-weight:700}
+.alert-card ul{list-style:none;font-size:12px;line-height:1.65;max-height:150px;overflow:auto}
+.alert-card li{border-bottom:1px solid rgba(255,255,255,.22);padding:2px 0}
+.alert-card li.none{border:none;opacity:.85;font-style:italic}
+.alert-card.red{background:#dc2626}
+.alert-card.orange{background:#ea580c}
+.alert-card.yellow{background:#ca8a04}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--cinza);margin-bottom:5px}
+input,select{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;font-family:inherit;color:#0f172a;background:#fff}
+input:focus,select:focus{outline:2px solid rgba(13,148,136,.35);border-color:var(--teal)}
+.btn{background:var(--teal);color:#fff;border:none;padding:9px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;transition:filter .12s}
+.btn:hover{filter:brightness(1.08)}
+.btn.sec{background:#fff;color:var(--azul);border:1px solid var(--borda)}
+.btn.edit{background:#2563eb}
+.btn.demitir{background:#dc2626}
+.btn.admitir{background:#16a34a}
+.btn.report{background:#7c3aed}
+.btn.sm{padding:5px 9px;font-size:11.5px;border-radius:6px;margin-right:4px}
+.form-actions{display:flex;gap:10px;flex-wrap:wrap}
+.filtros{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;background:#f8fafc;border:1px solid var(--borda);padding:12px;border-radius:10px;margin-bottom:12px;align-items:end}
+.filtros .field label{font-size:11px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chip{padding:6px 14px;border-radius:20px;border:1px solid var(--borda);background:#fff;font-size:12.5px;font-weight:600;color:var(--cinza);cursor:pointer;user-select:none}
+.chip:hover{background:#f1f5f9}
+.chip.active{background:var(--azul);color:#fff;border-color:var(--azul)}
+.table-wrap{overflow:auto;max-height:420px;border:1px solid var(--borda);border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:600px}
+th{background:var(--azul);color:#fff;padding:9px 10px;position:sticky;top:0;white-space:nowrap;text-align:left;font-size:12px;z-index:2}
+td{padding:8px 10px;border-bottom:1px solid var(--borda);vertical-align:middle}
+tr:hover td{background:#f8fafc}
+tr.inativo td{opacity:.55;background:#f1f5f9}
+td.empty{text-align:center;color:var(--cinza);padding:22px;font-style:italic}
+td.acoes{white-space:nowrap}
+.neg{color:var(--vermelho);font-weight:700}
+.tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap}
+.t-vencido,.t-5{background:#dc2626}
+.t-15{background:#ea580c}
+.t-30{background:#ca8a04}
+.t-ok{background:#16a34a}
+.t-info{background:#64748b}
+.t-aniv{background:#7c3aed}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}
+.modal.show{display:flex}
+.modal-box{background:#fff;border-radius:12px;padding:24px;width:90%;max-width:420px;max-height:90vh;overflow-y:auto;box-shadow:0 18px 45px rgba(0,0,0,.3)}
+.modal.wide .modal-box{max-width:760px}
+.modal-box h3{font-size:17px;color:var(--azul);margin-bottom:14px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+#editFields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#rel-total{font-size:13px;color:var(--cinza);font-weight:600;margin-bottom:12px}
+.legend{font-size:11px;color:var(--cinza);margin-top:8px;line-height:1.5}
+@media(max-width:1024px){ .main{padding:20px} .kpis{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))} }
+@media(max-width:800px){ .sidebar{width:64px} .sidebar h1,.sidebar .sub,.nav-item span,.db-section{display:none} .nav-item{justify-content:center;padding:14px;font-size:16px} .main{padding:14px;margin-left:64px} .topbar h2{font-size:18px} .filtros{grid-template-columns:1fr 1fr} .card{padding:14px} .alerts{grid-template-columns:1fr} }
+@media(max-width:600px){ .main{padding:10px} .kpis{grid-template-columns:repeat(2,1fr);gap:10px} .kpi .num{font-size:22px} .kpi .lbl{font-size:11px} .filtros{grid-template-columns:1fr} .form-grid{grid-template-columns:1fr} .topbar{flex-direction:column;align-items:flex-start} .btn{width:100%} .btn.sm,.form-actions .btn{width:auto} .modal{padding:12px} #editFields{grid-template-columns:1fr} }
+ 
+</style>
+</head>
+<body>
+ 
+<div class="sidebar">
+  <h1>👥 Controle de Funcionários</h1>
+  <div class="sub">RH &amp; Segurança do Trabalho</div>
+  <div class="nav-item active" data-view="dashboard">📊 <span>Painel</span></div>
+  <div class="nav-item" data-view="funcionarios">👤 <span>Funcionários</span></div>
+  <div class="nav-item" data-view="treinamentos">🛡️ <span>Treinamentos NR</span><span class="badge zero" id="b-trein">0</span></div>
+  <div class="nav-item" data-view="aso">🩺 <span>ASO</span><span class="badge zero" id="b-aso">0</span></div>
+  <div class="nav-item" data-view="vacinas">💉 <span>Vacinas</span><span class="badge zero" id="b-vac">0</span></div>
+  <div class="nav-item" data-view="contratos">📄 <span>Contratos Exp.</span><span class="badge zero" id="b-contr">0</span></div>
+  <div class="nav-item" data-view="aniversarios">🎂 <span>Aniversários</span></div>
+  <div class="db-section">
+    <h3>💾 BANCO DE DADOS</h3>
+    <button class="btn" onclick="exportarDados()">⬇️ Exportar Dados</button>
+    <button class="btn" onclick="document.getElementById('importFile').click()">⬆️ Importar Dados</button>
+    <input type="file" id="importFile" accept=".json,application/json" onchange="importarDados(event)" class="hidden">
+  </div>
+</div>
+ 
+<div class="main">
+  <div class="topbar">
+    <h2 id="page-title">📊 Painel</h2>
+    <span class="date" id="today"></span>
+  </div>
+ 
+  <section id="view-dashboard" class="view">
+    <div class="dica">💡 Dica: clique em qualquer card abaixo para abrir a lista correspondente.</div>
+    <div class="kpis">
+      <div class="kpi" onclick="irPara('funcionarios','todos')"><span class="arrow">➜</span><div class="num" id="k-total">0</div><div class="lbl">Funcionários</div></div>
+      <div class="kpi green" onclick="irPara('funcionarios','ativos')"><span class="arrow">➜</span><div class="num" id="k-ativos">0</div><div class="lbl">Ativos</div></div>
+      <div class="kpi" onclick="irPara('funcionarios','inativos')"><span class="arrow">➜</span><div class="num" id="k-inativos">0</div><div class="lbl">Inativos</div></div>
+      <div class="kpi" onclick="irPara('contratos')"><span class="arrow">➜</span><div class="num" id="k-exp">0</div><div class="lbl">Em experiência</div></div>
+      <div class="kpi alert" onclick="irPara('treinamentos')"><span class="arrow">➜</span><div class="num" id="k-trein">0</div><div class="lbl">Treinamentos a vencer (30d)</div></div>
+      <div class="kpi alert" onclick="irPara('aso')"><span class="arrow">➜</span><div class="num" id="k-aso">0</div><div class="lbl">ASOs a vencer (30d)</div></div>
+      <div class="kpi alert" onclick="irPara('vacinas')"><span class="arrow">➜</span><div class="num" id="k-vac">0</div><div class="lbl">Vacinas a vencer (30d)</div></div>
+      <div class="kpi" onclick="irPara('aniversarios')"><span class="arrow">➜</span><div class="num" id="k-aniv">0</div><div class="lbl">Aniversariantes do mês</div></div>
+    </div>
+    <div class="alerts">
+      <div class="alert-card red"><h4>🔴 VENCENDO EM 5 DIAS</h4><ul id="al-5"></ul></div>
+      <div class="alert-card orange"><h4>🟠 VENCENDO EM 15 DIAS</h4><ul id="al-15"></ul></div>
+      <div class="alert-card yellow"><h4>🟡 VENCENDO EM 30 DIAS</h4><ul id="al-30"></ul></div>
+    </div>
+    <div class="card">
+      <h3>📋 Próximos Aniversários</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Funcionário</th><th>Data de Nascimento</th><th>Próximo Aniversário</th><th>Dias</th></tr></thead>
+          <tbody id="tb-aniv-prox"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+ 
+  <section id="view-funcionarios" class="view hidden">
+    <div class="card">
+      <h3>➕ Admissão de Novo Funcionário</h3>
+      <div class="form-grid">
+        <div class="field"><label>Nome</label><input type="text" id="f-nome" placeholder="Nome completo"></div>
+        <div class="field"><label>Data de Nascimento</label><input type="date" id="f-nasc"></div>
+        <div class="field"><label>Data de Admissão</label><input type="date" id="f-adm"></div>
+        <div class="field"><label>Cargo</label><input type="text" id="f-cargo" placeholder="Ex.: Pedreiro"></div>
+        <div class="field"><label>Obra</label><input type="text" id="f-obra" placeholder="Ex.: Obra A"></div>
+      </div>
+      <div class="form-actions"><button class="btn admitir" onclick="addFuncionario()">✅ Admitir Funcionário</button></div>
+    </div>
+ 
+    <div class="card">
+      <div class="card-head">
+        <h3>👤 Lista de Funcionários (ordem alfabética)</h3>
+        <button class="btn report" onclick="abrirRelatorio()">📊 Relatório de Ativos</button>
+      </div>
+      <div class="filtros">
+        <div class="field"><label>Buscar</label><input type="text" id="search-func" placeholder="Nome, cargo ou obra" oninput="renderFuncionarios()"></div>
+        <div class="field"><label>Obra</label><select id="fl-obra" onchange="renderFuncionarios()"><option value="">Todas</option></select></div>
+        <div class="field"><label>Cargo</label><select id="fl-cargo" onchange="renderFuncionarios()"><option value="">Todos</option></select></div>
+        <div class="field"><label>Admissão de</label><input type="date" id="fl-adm-ini" onchange="renderFuncionarios()"></div>
+        <div class="field"><label>Admissão até</label><input type="date" id="fl-adm-fim" onchange="renderFuncionarios()"></div>
+        <div class="field"><label>&nbsp;</label><button class="btn sec" onclick="limparFiltroFunc()">✖ Limpar filtros</button></div>
+      </div>
+      <div class="chips">
+        <div class="chip active" data-filtro="ativos" onclick="setFiltro('ativos',this)">✅ Ativos</div>
+        <div class="chip" data-filtro="inativos" onclick="setFiltro('inativos',this)">🚫 Inativos</div>
+        <div class="chip" data-filtro="todos" onclick="setFiltro('todos',this)">👥 Todos</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>Nascimento</th><th>Admissão</th><th>Cargo</th><th>Obra</th><th>Status</th><th>Demissão</th><th>Ações</th></tr></thead>
+          <tbody id="tb-func"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+ 
+  <section id="view-treinamentos" class="view hidden">
+    <div class="card">
+      <h3>➕ Registrar Treinamento NR</h3>
+      <div class="form-grid">
+        <div class="field"><label>Funcionário</label><select id="t-func"></select></div>
+        <div class="field"><label>Treinamento</label><select id="t-nr">
+          <option>NR 06</option><option>NR 10</option><option>NR 12</option>
+          <option>NR 18</option><option>NR 33</option><option>NR 35</option>
+        </select></div>
+        <div class="field"><label>Data do Treinamento</label><input type="date" id="t-data"></div>
+        <div class="field"><label>Validade (anos)</label><input type="number" id="t-val" value="2" min="1"></div>
+      </div>
+      <div class="form-actions"><button class="btn" onclick="addTreinamento()">Salvar Treinamento</button></div>
+    </div>
+    <div class="card">
+      <h3>🛡️ Treinamentos NR (validade 2 anos)</h3>
+      <div class="filtros">
+        <div class="field"><label>Buscar</label><input type="text" id="search-trein" placeholder="Nome ou NR" oninput="renderTreinamentos()"></div>
+        <div class="field"><label>Treinamento</label><select id="fl-trein-tipo" onchange="renderTreinamentos()">
+          <option value="">Todos</option><option>NR 06</option><option>NR 10</option><option>NR 12</option>
+          <option>NR 18</option><option>NR 33</option><option>NR 35</option>
+        </select></div>
+        <div class="field"><label>Status</label><select id="fl-trein-status" onchange="renderTreinamentos()">
+          <option value="">Todos</option><option>VENCIDO</option><option>VENCE EM 5 DIAS</option>
+          <option>VENCE EM 15 DIAS</option><option>VENCE EM 30 DIAS</option><option>VÁLIDO</option>
+        </select></div>
+        <div class="field"><label>&nbsp;</label><button class="btn sec" onclick="limparFiltro('trein','search-trein','fl-trein-tipo','fl-trein-status')">✖ Limpar</button></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Funcionário</th><th>Treinamento</th><th>Data</th><th>Vencimento</th><th>Dias</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="tb-trein"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+ 
+  <section id="view-aso" class="view hidden">
+    <div class="card">
+      <h3>➕ Registrar ASO</h3>
+      <div class="form-grid">
+        <div class="field"><label>Funcionário</label><select id="a-func"></select></div>
+        <div class="field"><label>Tipo de Exame</label><select id="a-tipo">
+          <option>Admissional</option><option>Periódico</option><option>Demissional</option>
+        </select></div>
+        <div class="field"><label>Data do Exame</label><input type="date" id="a-data"></div>
+        <div class="field"><label>Validade (anos)</label><input type="number" id="a-val" value="1" min="1"></div>
+      </div>
+      <div class="form-actions"><button class="btn" onclick="addASO()">Salvar ASO</button></div>
+    </div>
+    <div class="card">
+      <h3>🩺 Exames Ocupacionais (ASO)</h3>
+      <div class="filtros">
+        <div class="field"><label>Buscar</label><input type="text" id="search-aso" placeholder="Nome ou tipo" oninput="renderASO()"></div>
+        <div class="field"><label>Tipo</label><select id="fl-aso-tipo" onchange="renderASO()">
+          <option value="">Todos</option><option>Admissional</option><option>Periódico</option><option>Demissional</option>
+        </select></div>
+        <div class="field"><label>Status</label><select id="fl-aso-status" onchange="renderASO()">
+          <option value="">Todos</option><option>VENCIDO</option><option>VENCE EM 5 DIAS</option>
+          <option>VENCE EM 15 DIAS</option><option>VENCE EM 30 DIAS</option><option>VÁLIDO</option>
+        </select></div>
+        <div class="field"><label>&nbsp;</label><button class="btn sec" onclick="limparFiltro('aso','search-aso','fl-aso-tipo','fl-aso-status')">✖ Limpar</button></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Funcionário</th><th>Tipo</th><th>Data</th><th>Vencimento</th><th>Dias</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="tb-aso"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+ 
+  <section id="view-vacinas" class="view hidden">
+    <div class="card">
+      <h3>➕ Registrar Vacina</h3>
+      <div class="form-grid">
+        <div class="field"><label>Funcionário</label><select id="v-func"></select></div>
+        <div class="field"><label>Vacina</label><select id="v-nome">
+          <option>Antitetânica</option><option>Hepatite B</option><option>Febre Amarela</option>
+          <option>Gripe</option><option>COVID-19</option>
+        </select></div>
+        <div class="field"><label>Data da Dose</label><input type="date" id="v-data"></div>
+        <div class="field"><label>Validade (anos)</label><input type="number" id="v-val" value="10" min="1"></div>
+      </div>
+      <div class="form-actions"><button class="btn" onclick="addVacina()">Salvar Vacina</button></div>
+    </div>
+    <div class="card">
+      <h3>💉 Vacinas</h3>
+      <div class="filtros">
+        <div class="field"><label>Buscar</label><input type="text" id="search-vac" placeholder="Nome ou vacina" oninput="renderVacinas()"></div>
+        <div class="field"><label>Vacina</label><select id="fl-vac-nome" onchange="renderVacinas()">
+          <option value="">Todas</option><option>Antitetânica</option><option>Hepatite B</option>
+          <option>Febre Amarela</option><option>Gripe</option><option>COVID-19</option>
+        </select></div>
+        <div class="field"><label>Status</label><select id="fl-vac-status" onchange="renderVacinas()">
+          <option value="">Todos</option><option>VENCIDO</option><option>VENCE EM 5 DIAS</option>
+          <option>VENCE EM 15 DIAS</option><option>VENCE EM 30 DIAS</option><option>VÁLIDO</option>
+        </select></div>
+        <div class="field"><label>&nbsp;</label><button class="btn sec" onclick="limparFiltro('vac','search-vac','fl-vac-nome','fl-vac-status')">✖ Limpar</button></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Funcionário</th><th>Vacina</th><th>Data</th><th>Vencimento</th><th>Dias</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="tb-vac"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+ 
+  <section id="view-contratos" class="view hidden">
+    <div class="card">
+      <h3>📄 Contratos de Experiência (automático)</h3>
+      <p class="legend">Funcionários ativos com admissão nos últimos 60 dias. O prazo é calculado automaticamente: 1º período de 30 dias e 2º período até 60 dias.</p>
+    </div>
+    <div class="card">
+      <h3>📄 Contratos em Andamento</h3>
+      <div class="filtros">
+        <div class="field"><label>Buscar</label><input type="text" id="search-contr" placeholder="Nome do funcionário" oninput="renderContratos()"></div>
+        <div class="field"><label>Período</label><select id="fl-contr-per" onchange="renderContratos()">
+          <option value="">Todos</option><option>1º PERÍODO</option><option>2º PERÍODO</option>
+        </select></div>
+        <div class="field"><label>Status</label><select id="fl-contr-status" onchange="renderContratos()">
+          <option value="">Todos</option><option>EM ANDAMENTO</option><option>TERMINA EM 30 DIAS</option>
+          <option>TERMINA EM 15 DIAS</option><option>TERMINA EM 5 DIAS</option><option>TERMINA HOJE</option>
+        </select></div>
+        <div class="field"><label>&nbsp;</label><button class="btn sec" onclick="limparFiltro('contr','search-contr','fl-contr-per','fl-contr-status')">✖ Limpar</button></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Funcionário</th><th>Data de Admissão</th><th>Fim 1º Período (30d)</th><th>Fim 2º Período (60d)</th><th>Dias até o fim</th><th>Período</th><th>Status</th></tr></thead>
+          <tbody id="tb-contr"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+ 
+  <section id="view-aniversarios" class="view hidden">
+    <div class="card">
+      <h3>🎂 Aniversariantes</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Funcionário</th><th>Data de Nascimento</th><th>Próximo Aniversário</th><th>Dias até</th><th>Status</th></tr></thead>
+          <tbody id="tb-aniv"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+ 
+<div class="modal" id="editModal">
+  <div class="modal-box">
+    <h3 id="editTitle">✏️ Editar</h3>
+    <div id="editFields"></div>
+    <div class="modal-actions">
+      <button class="btn sec" onclick="closeEdit()">Cancelar</button>
+      <button class="btn" onclick="saveEdit()">Salvar Alterações</button>
+    </div>
+  </div>
+</div>
+ 
+<div class="modal" id="demitirModal">
+  <div class="modal-box">
+    <h3>🚫 Demitir Funcionário</h3>
+    <p id="demitir-nome" style="font-size:13px;color:#334155;margin-bottom:14px;font-weight:600"></p>
+    <div class="field"><label>Data da Demissão</label><input type="date" id="d-data"></div>
+    <div class="modal-actions">
+      <button class="btn sec" onclick="closeDemitir()">Cancelar</button>
+      <button class="btn demitir" onclick="confirmarDemissao()">Confirmar Demissão</button>
+    </div>
+  </div>
+</div>
+ 
+<div class="modal wide" id="relatorioModal">
+  <div class="modal-box">
+    <h3>📊 Relatório de Funcionários Ativos</h3>
+    <div id="rel-total"></div>
+    <div class="table-wrap" style="max-height:340px">
+      <table>
+        <thead><tr><th>#</th><th>Nome Completo</th><th>Data de Admissão</th><th>Cargo</th><th>Obra</th></tr></thead>
+        <tbody id="tb-relatorio"></tbody>
+      </table>
+    </div>
+    <div class="modal-actions">
+      <button class="btn sec" onclick="fecharRelatorio()">Fechar</button>
+      <button class="btn" onclick="imprimirRelatorio()">🖨️ Imprimir / PDF</button>
+      <button class="btn admitir" onclick="baixarCSV()">⬇️ Baixar CSV (Excel)</button>
+    </div>
+  </div>
+</div>
+ 
+<script>
+ 
+'use strict';
+const CHAVE='sistemaFuncV12';
+const NRS=['NR 06','NR 10','NR 12','NR 18','NR 33','NR 35'];
+const TIPOS_ASO=['Admissional','Periódico','Demissional'];
+const VACINAS=['Antitetânica','Hepatite B','Febre Amarela','Gripe','COVID-19'];
+const TITULOS={dashboard:'📊 Painel',funcionarios:'👤 Funcionários',treinamentos:'🛡️ Treinamentos NR',aso:'🩺 ASO',vacinas:'💉 Vacinas',contratos:'📄 Contratos de Experiência',aniversarios:'🎂 Aniversários'};
+ 
+const seedFuncionarios=[
+  {id:1,nome:"ALAN OLIVEIRA SCHLUCUBIER",nasc:'',adm:"2025-09-19",cargo:"Pedreiro",obra:"Obra A",status:"Ativo",demissao:''},
+  {id:2,nome:"ATILA OLIVEIRA DOS SANTOS",nasc:'',adm:"2026-07-29",cargo:"Servente",obra:"Obra B",status:"Ativo",demissao:''},
+  {id:3,nome:"BLADIMIR VIEIRA",nasc:'',adm:"2026-07-08",cargo:"Pedreiro",obra:"Obra A",status:"Ativo",demissao:''},
+  {id:4,nome:"CARLOS LEANDRO NASCIMENTO",nasc:'',adm:"2026-04-17",cargo:"Carpinteiro",obra:"Obra C",status:"Ativo",demissao:''},
+  {id:5,nome:"CÉLIO HENRIQUE BARRETO DOS SANTOS",nasc:'',adm:"2024-09-14",cargo:"Encarregado",obra:"Obra A",status:"Ativo",demissao:''},
+  {id:6,nome:"CLEVERSON SOUZA DE CAMARGO",nasc:'',adm:"2025-08-13",cargo:"Pedreiro",obra:"Obra B",status:"Ativo",demissao:''},
+  {id:7,nome:"CLEYTON MANOEL DA ROSA",nasc:'',adm:"2026-07-29",cargo:"Servente",obra:"Obra C",status:"Ativo",demissao:''},
+  {id:8,nome:"DALME MACIEL SILVA",nasc:'',adm:"2026-07-28",cargo:"Pedreiro",obra:"Obra B",status:"Ativo",demissao:''},
+  {id:9,nome:"DIEGO DA ROSA PEREIRA",nasc:'',adm:"2026-07-28",cargo:"Servente",obra:"Obra A",status:"Ativo",demissao:''},
+  {id:10,nome:"DOUGLAS DA SILVA OSTROWSKI",nasc:'',adm:"2026-02-16",cargo:"Armador",obra:"Obra C",status:"Ativo",demissao:''},
+  {id:11,nome:"ELIAS DE MATOS PARINTINS",nasc:'',adm:"2026-04-02",cargo:"Pedreiro",obra:"Obra A",status:"Ativo",demissao:''},
+  {id:12,nome:"ERON OLIVEIRA ROSA",nasc:'',adm:"2025-02-17",cargo:"Carpinteiro",obra:"Obra B",status:"Ativo",demissao:''},
+  {id:13,nome:"FABIO JUNIOR DUARTE VIEIRA",nasc:'',adm:"2025-02-03",cargo:"Pedreiro",obra:"Obra C",status:"Ativo",demissao:''},
+  {id:14,nome:"GILSON BISPO RODRIGUES",nasc:'',adm:"2025-03-03",cargo:"Servente",obra:"Obra A",status:"Ativo",demissao:''},
+  {id:15,nome:"ISAC DE NUNES DE LARA",nasc:'',adm:"2025-03-31",cargo:"Pedreiro",obra:"Obra B",status:"Ativo",demissao:''},
+  {id:16,nome:"JOANDERSON NASCIMENTO PEREIRA DOS SANTOS",nasc:'',adm:"2026-06-22",cargo:"Servente",obra:"Obra C",status:"Ativo",demissao:''},
+  {id:17,nome:"JOCENIL RIBEIRO DA COSTA",nasc:'',adm:"2026-02-24",cargo:"Pedreiro",obra:"Obra B",status:"Ativo",demissao:''},
+  {id:18,nome:"JONATHAN SOUSA EVERTON",nasc:'',adm:"2026-03-16",cargo:"Armador",obra:"Obra A",status:"Ativo",demissao:''},
+  {id:19,nome:"JOSE ANTONIO DE FREITAS",nasc:'',adm:"2025-10-23",cargo:"Encarregado",obra:"Obra C",status:"Ativo",demissao:''},
+  {id:20,nome:"JOSE WERMESON DO ESPIRITO",nasc:'',adm:"2025-06-18",cargo:"Pedreiro",obra:"Obra B",status:"Ativo",demissao:''},
+  {id:21,nome:"LEANDRO DA SILVEIRA SANTOS DE AVILA",nasc:'',adm:"2024-09-12",cargo:"Carpinteiro",obra:"Obra A",status:"Ativo",demissao:''},
+  {id:22,nome:"LEONARDO OLIVEIRA DE FARIAS",nasc:'',adm:"2026-06-01",cargo:"Pedreiro",obra:"Obra C",status:"Ativo",demissao:''},
+  {id:23,nome:"MAICON SOARES LIMA",nasc:'',adm:"2026-02-16",cargo:"Servente",obra:"Obra B",status:"Ativo",demissao:''},
+  {id:24,nome:"MANOEL LUCAS FREITAS FERREIRA",nasc:'',adm:"2026-04-14",cargo:"Armador",obra:"Obra A",status:"Ativo",demissao:''},
+  {id:25,nome:"MATEUS DE AVILA DA SILVA",nasc:'',adm:"2025-03-28",cargo:"Pedreiro",obra:"Obra C",status:"Ativo",demissao:''},
+  {id:26,nome:"OTILENE DE SOUZA CARVALHO",nasc:'',adm:"2026-08-11",cargo:"Servente",obra:"Obra B",status:"Ativo",demissao:''},
+  {id:27,nome:"RAFAEL DOS SANTOS",nasc:'',adm:"2026-03-12",cargo:"Pedreiro",obra:"Obra A",status:"Ativo",demissao:''},
+  {id:28,nome:"RAFAEL FREITAS FERREIRA",nasc:'',adm:"2026-05-13",cargo:"Servente",obra:"Obra C",status:"Ativo",demissao:''},
+  {id:29,nome:"RAILSON ALVES SILVA",nasc:'',adm:"2026-05-13",cargo:"Pedreiro",obra:"Obra B",status:"Ativo",demissao:''},
+  {id:30,nome:"SAMUEL SATIRO DE AVILA DA",nasc:'',adm:"2025-09-16",cargo:"Carpinteiro",obra:"Obra A",status:"Ativo",demissao:''},
+  {id:31,nome:"SALÉSIO FERNANDES",nasc:'',adm:"2026-08-06",cargo:"Pedreiro",obra:"Obra C",status:"Ativo",demissao:''},
+  {id:32,nome:"SATIRO DA SILVA (sócio)",nasc:'',adm:"",cargo:"Sócio",obra:"",status:"Sócio",demissao:''},
+  {id:33,nome:"WALMOR PEDROSO DA SILVA",nasc:'',adm:"2024-11-14",cargo:"Encarregado",obra:"Obra B",status:"Ativo",demissao:''}
+];
+ 
+const seedTreinamentos=[
+[26,"NR 06","2026-08-12"],[26,"NR 12","2026-08-12"],[26,"NR 18","2026-08-12"],[26,"NR 35","2026-08-11"],
+[31,"NR 06","2026-08-06"],[31,"NR 12","2026-08-06"],[31,"NR 18","2026-08-06"],[31,"NR 35","2026-08-07"],
+[2,"NR 06","2026-08-12"],[2,"NR 12","2026-08-12"],[2,"NR 18","2026-08-12"],[2,"NR 35","2026-08-11"],
+[8,"NR 06","2026-07-29"],[8,"NR 12","2026-07-29"],[8,"NR 18","2026-07-29"],[8,"NR 35","2026-07-30"],
+[3,"NR 06","2026-07-09"],[3,"NR 12","2026-07-09"],[3,"NR 18","2026-07-09"],[3,"NR 35","2026-07-10"],
+[16,"NR 06","2026-06-23"],[16,"NR 12","2026-06-23"],[16,"NR 18","2026-06-23"],[16,"NR 35","2026-06-24"],
+[22,"NR 06","2026-06-01"],[22,"NR 12","2026-06-01"],[22,"NR 18","2026-06-01"],[22,"NR 35","2026-06-02"],
+[28,"NR 06","2026-06-01"],[28,"NR 12","2026-06-01"],[28,"NR 18","2026-06-01"],[28,"NR 35","2026-06-02"],
+[29,"NR 06","2026-06-01"],[29,"NR 12","2026-06-01"],[29,"NR 18","2026-06-01"],[29,"NR 35","2026-06-02"],
+[4,"NR 06","2026-04-17"],[4,"NR 12","2026-04-17"],[4,"NR 18","2026-04-17"],[4,"NR 35","2026-04-20"],
+[24,"NR 06","2026-04-07"],[24,"NR 12","2026-04-07"],[24,"NR 18","2026-04-07"],[24,"NR 35","2026-04-06"],
+[11,"NR 06","2026-03-07"],[11,"NR 12","2026-03-07"],[11,"NR 18","2026-03-07"],[11,"NR 35","2026-04-06"],
+[18,"NR 06","2026-03-17"],[18,"NR 12","2026-03-17"],[18,"NR 18","2026-03-17"],[18,"NR 35","2026-03-18"],
+[27,"NR 06","2026-03-12"],[27,"NR 12","2026-03-12"],[27,"NR 18","2026-03-12"],[27,"NR 35","2026-03-13"],
+[17,"NR 06","2026-02-26"],[17,"NR 12","2026-02-26"],[17,"NR 18","2026-02-26"],[17,"NR 35","2026-02-27"],
+[10,"NR 06","2026-02-12"],[10,"NR 12","2026-02-12"],[10,"NR 18","2026-02-12"],[10,"NR 35","2026-02-13"],
+[23,"NR 06","2026-02-17"],[23,"NR 12","2026-02-17"],[23,"NR 18","2026-02-17"],[23,"NR 35","2026-02-18"],
+[19,"NR 06","2025-10-24"],[19,"NR 12","2025-10-24"],[19,"NR 18","2025-10-24"],[19,"NR 35","2025-10-28"],
+[1,"NR 06","2025-09-19"],[1,"NR 12","2025-09-19"],[1,"NR 18","2025-09-19"],[30,"NR 06","2025-09-16"],
+[30,"NR 12","2025-09-16"],[30,"NR 18","2025-09-16"],[30,"NR 35","2025-09-16"],[6,"NR 06","2025-08-13"],
+[6,"NR 12","2026-08-13"],[6,"NR 18","2026-08-13"],[6,"NR 35","2026-08-14"],[20,"NR 06","2025-07-28"],
+[20,"NR 12","2025-07-24"],[20,"NR 18","2025-07-24"],[20,"NR 35","2025-07-25"],[15,"NR 06","2025-03-28"],
+[15,"NR 12","2025-04-01"],[15,"NR 18","2025-03-31"],[15,"NR 35","2025-03-31"],[25,"NR 06","2025-03-28"],
+[25,"NR 18","2024-09-05"],[25,"NR 35","2024-09-06"],[14,"NR 06","2025-03-28"],[14,"NR 12","2025-03-03"],
+[14,"NR 18","2025-03-03"],[14,"NR 35","2025-03-04"],[12,"NR 06","2025-09-08"],[12,"NR 12","2025-02-17"],
+[12,"NR 18","2025-02-17"],[12,"NR 35","2025-02-17"],[13,"NR 06","2025-03-28"],[13,"NR 12","2025-02-03"],
+[13,"NR 18","2025-02-03"],[13,"NR 35","2025-02-04"],[33,"NR 06","2025-03-28"],[33,"NR 12","2024-11-14"],
+[33,"NR 18","2024-11-14"],[33,"NR 35","2024-11-15"],[5,"NR 06","2025-03-28"],[5,"NR 12","2024-11-14"],
+[5,"NR 18","2024-11-14"],[5,"NR 35","2024-11-15"],[21,"NR 06","2026-03-28"],[21,"NR 12","2024-11-14"],
+[21,"NR 18","2024-09-05"],[21,"NR 35","2024-09-06"]
+];
+ 
+const seedASO=[
+[26,"Admissional","2026-08-04"],[31,"Admissional","2026-08-04"],[2,"Admissional","2026-08-13"],[7,"Admissional","2026-07-21"],
+[8,"Admissional","2026-07-21"],[9,"Admissional","2026-07-21"],[3,"Admissional","2026-06-23"],[16,"Admissional","2026-06-18"],
+[22,"Admissional","2026-05-25"],[28,"Admissional","2026-04-23"],[29,"Admissional","2026-04-23"],[4,"Admissional","2026-04-16"],
+[24,"Admissional","2026-03-12"],[11,"Admissional","2026-03-26"],[18,"Admissional","2026-03-11"],[27,"Admissional","2026-03-11"],
+[17,"Admissional","2026-02-19"],[10,"Admissional","2026-02-11"],[23,"Admissional","2026-02-12"],[19,"Admissional","2025-10-21"],
+[1,"Admissional","2025-09-12"],[30,"Admissional","2025-07-17"],[6,"Admissional","2026-08-05"],[20,"Admissional","2025-07-17"],
+[15,"Admissional","2025-03-28"],[25,"Admissional","2024-09-05"],[14,"Admissional","2025-03-03"],[12,"Admissional","2026-03-04"],
+[13,"Admissional","2025-02-03"],[33,"Admissional","2025-01-13"],[5,"Admissional","2024-09-14"],[21,"Admissional","2024-09-05"]
+];
+ 
+let state={funcionarios:seedFuncionarios,treinamentos:seedTreinamentos.map(t=>({func:t[0],nr:t[1],data:t[2],val:2})),asos:seedASO.map(a=>({func:a[0],tipo:a[1],data:a[2],val:1})),vacinas:[{func:32,nome:'Antitetânica',data:'',val:10}]};
+let filtroFunc='ativos';
+let editCtx=null;
+let demitirId=null;
+ 
+/* ================= DATAS (sem bug de fuso) ================= */
+function parseLocal(d){if(!d)return null;const p=String(d).split('-');if(p.length!==3)return new Date(d);return new Date(+p[0],+p[1]-1,+p[2]);}
+function toYMD(x){if(!x)return"";return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
+function fmt(d){if(!d)return"—";const x=parseLocal(d);if(!x||isNaN(x.getTime()))return"—";return x.toLocaleDateString('pt-BR');}
+function addDias(d,n){if(!d)return"";const x=parseLocal(d);if(!x||isNaN(x.getTime()))return"";x.setDate(x.getDate()+n);return toYMD(x);}
+function diasAte(d){if(!d)return null;const x=parseLocal(d);if(!x||isNaN(x.getTime()))return null;x.setHours(0,0,0,0);const h=new Date();h.setHours(0,0,0,0);return Math.round((x-h)/86400000);}
+function hojeYMD(){const h=new Date();h.setHours(0,0,0,0);return toYMD(h);}
+ 
+/* ================= UTIL ================= */
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function setHTML(id,h){const el=document.getElementById(id);if(el)el.innerHTML=h;}
+function uid(){return Date.now()+Math.floor(Math.random()*100000);}
+function tag(txt,cls){return '<span class="tag '+cls+'">'+esc(txt)+'</span>';}
+function porNome(a,b){return String(a.nome).localeCompare(String(b.nome),'pt-BR',{sensitivity:'base'});}
+function jsArg(v){return esc(JSON.stringify(v));}
+function idFunc(v){const n=Number(v);return v!==''&&v!=null&&!isNaN(n)?n:v;}
+
+function ordenarFuncionarios(){state.funcionarios.sort(porNome);}
+function nomeFunc(id){const f=state.funcionarios.find(x=>String(x.id)===String(id));return f?f.nome:'—';}
+ 
+function save(){try{localStorage.setItem(CHAVE,JSON.stringify(state));}catch(e){alert("⚠️ Não foi possível salvar no navegador. Se estiver abrindo pela pré-visualização do Google Drive, baixe o arquivo e abra direto do computador.");}}
+function load(){try{const raw=localStorage.getItem(CHAVE);if(!raw)return;const d=JSON.parse(raw);if(d&&Array.isArray(d.funcionarios)){state={funcionarios:d.funcionarios.filter(f=>f&&typeof f==='object').map(f=>Object.assign({nasc:'',adm:'',cargo:'',obra:'',status:'Ativo',demissao:''},f,{nome:f.nome||'Sem nome'})),treinamentos:Array.isArray(d.treinamentos)?d.treinamentos:[],asos:Array.isArray(d.asos)?d.asos:[],vacinas:Array.isArray(d.vacinas)?d.vacinas:[]};}}catch(e){}}
+ 
+/* ================= STATUS ================= */
+function statusVenc(data,valAnos){if(!data)return{txt:"Sem data",cls:"t-info"};const venc=addDias(data,(valAnos||1)*365);const d=diasAte(venc);if(d===null)return{txt:"Sem data",cls:"t-info"};if(d<0)return{txt:"VENCIDO",cls:"t-vencido"};if(d<=5)return{txt:"VENCE EM 5 DIAS",cls:"t-5"};if(d<=15)return{txt:"VENCE EM 15 DIAS",cls:"t-15"};if(d<=30)return{txt:"VENCE EM 30 DIAS",cls:"t-30"};return{txt:"VÁLIDO",cls:"t-ok"};}
+ 
+function contratosEmExperiencia(){return state.funcionarios.filter(f=>{if(f.status!=='Ativo'||!f.adm)return false;return diasAte(addDias(f.adm,60))>=0;});}
+function statusContrato(f){
+  const fim1=addDias(f.adm,30),fim2=addDias(f.adm,60);
+  const d=diasAte(fim2),d1=diasAte(fim1);
+  const per=d1>0?{txt:'1º PERÍODO',cls:'t-aniv'}:{txt:'2º PERÍODO',cls:'t-15'};
+  let st;
+  if(d===0)st={txt:'TERMINA HOJE',cls:'t-5'};
+  else if(d<0)st={txt:'ENCERRADO',cls:'t-vencido'};
+  else if(d<=5)st={txt:'TERMINA EM 5 DIAS',cls:'t-5'};
+  else if(d<=15)st={txt:'TERMINA EM 15 DIAS',cls:'t-15'};
+  else if(d<=30)st={txt:'TERMINA EM 30 DIAS',cls:'t-30'};
+  else st={txt:'EM ANDAMENTO',cls:'t-ok'};
+  return{fim1:fim1,fim2:fim2,d:d,per:per,status:st};
+}
+ 
+function proximoAniversario(nasc){
+  const d=parseLocal(nasc);if(!d||isNaN(d.getTime()))return null;
+  const h=new Date();h.setHours(0,0,0,0);
+  let p=new Date(h.getFullYear(),d.getMonth(),d.getDate());
+  if(p<h)p=new Date(h.getFullYear()+1,d.getMonth(),d.getDate());
+  return{data:toYMD(p),dias:Math.round((p-h)/86400000)};
+}
+ 
+/* ================= NAVEGAÇÃO ================= */
+function irPara(v,filtro){
+  if(filtro){filtroFunc=filtro;document.querySelectorAll('.chip').forEach(c=>{c.classList.toggle('active',c.dataset.filtro===filtro);});}
+  document.querySelectorAll('.nav-item').forEach(el=>{el.classList.toggle('active',el.dataset.view===v);});
+  document.querySelectorAll('[id^="view-"]').forEach(sec=>{sec.classList.toggle('hidden',sec.id!=='view-'+v);});
+  document.getElementById('page-title').textContent=TITULOS[v]||'Painel';
+  renderAll();
+  window.scrollTo(0,0);
+}
+ 
+/* ================= FILTROS AUX ================= */
+function setFiltro(f,el){
+  filtroFunc=f;
+  document.querySelectorAll('.chip').forEach(c=>{c.classList.toggle('active',c.dataset.filtro===f);});
+  renderFuncionarios();
+}
+function limparFiltroFunc(){
+  ['search-func','fl-obra','fl-cargo','fl-adm-ini','fl-adm-fim'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  setFiltro('todos');
+}
+function limparFiltro(prefix,...ids){
+  ids.forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  if(prefix==='trein')renderTreinamentos();
+  else if(prefix==='aso')renderASO();
+  else if(prefix==='vac')renderVacinas();
+  else if(prefix==='contr')renderContratos();
+}
+ 
+/* ================= FUNCIONÁRIOS ================= */
+function renderFuncionarios(){
+  const busca=(document.getElementById('search-func').value||'').toLowerCase().trim();
+  const obra=document.getElementById('fl-obra').value;
+  const cargo=document.getElementById('fl-cargo').value;
+  const ini=document.getElementById('fl-adm-ini').value;
+  const fim=document.getElementById('fl-adm-fim').value;
+  let lista=state.funcionarios.slice().sort(porNome);
+  lista=lista.filter(f=>{
+    if(filtroFunc==='ativos'&&f.status!=='Ativo')return false;
+    if(filtroFunc==='inativos'&&f.status!=='Inativo')return false;
+    if(busca){const t=(f.nome+' '+(f.cargo||'')+' '+(f.obra||'')).toLowerCase();if(t.indexOf(busca)===-1)return false;}
+    if(obra&&f.obra!==obra)return false;
+    if(cargo&&f.cargo!==cargo)return false;
+    if(ini&&(!f.adm||f.adm<ini))return false;
+    if(fim&&(!f.adm||f.adm>fim))return false;
+    return true;
+  });
+  let h='';
+  if(!lista.length)h='<tr><td colspan="8" class="empty">Nenhum funcionário encontrado.</td></tr>';
+  lista.forEach(f=>{
+    let cls='t-ok';
+    if(f.status==='Inativo')cls='t-vencido';
+    else if(f.status==='Sócio')cls='t-aniv';
+    let acoes='';
+    if(f.status==='Ativo'){
+      acoes='<button class="btn demitir sm" onclick="abrirDemissao('+jsArg(f.id)+')">🚫 Demitir</button>'+
+            '<button class="btn edit sm" onclick="openEditFunc('+jsArg(f.id)+')">✏️ Editar</button>';
+    }else if(f.status==='Inativo'){
+      acoes='<button class="btn edit sm" onclick="readmitir('+jsArg(f.id)+')">↩️ Readmitir</button>';
+    }else{
+      acoes='<button class="btn edit sm" onclick="openEditFunc('+jsArg(f.id)+')">✏️ Editar</button>';
+    }
+    h+='<tr class="'+(f.status==='Inativo'?'inativo':'')+'">'+
+       '<td><strong>'+esc(f.nome)+'</strong></td>'+
+       '<td>'+fmt(f.nasc)+'</td>'+
+       '<td>'+fmt(f.adm)+'</td>'+
+       '<td>'+esc(f.cargo||'—')+'</td>'+
+       '<td>'+esc(f.obra||'—')+'</td>'+
+       '<td>'+tag(f.status,cls)+'</td>'+
+       '<td>'+fmt(f.demissao)+'</td>'+
+       '<td class="acoes">'+acoes+'</td></tr>';
+  });
+  setHTML('tb-func',h);
+}
+ 
+function addFuncionario(){
+  const nome=document.getElementById('f-nome').value.trim();
+  const nasc=document.getElementById('f-nasc').value;
+  const adm=document.getElementById('f-adm').value;
+  const cargo=document.getElementById('f-cargo').value.trim();
+  const obra=document.getElementById('f-obra').value.trim();
+  if(!nome){alert('⚠️ Informe o nome do funcionário.');return;}
+  if(!adm){alert('⚠️ Informe a data de admissão.');return;}
+  state.funcionarios.push({id:uid(),nome:nome,nasc:nasc,adm:adm,cargo:cargo,obra:obra,status:'Ativo',demissao:''});
+  ordenarFuncionarios();save();
+  ['f-nome','f-nasc','f-adm','f-cargo','f-obra'].forEach(id=>{document.getElementById(id).value='';});
+  renderAll();
+  alert('✅ Funcionário admitido com sucesso!');
+}
+ 
+function abrirDemissao(id){
+  const f=state.funcionarios.find(x=>String(x.id)===String(id));
+  if(!f){alert('Funcionário não encontrado.');return;}
+  demitirId=f.id;
+  document.getElementById('demitir-nome').textContent='Funcionário: '+f.nome;
+  document.getElementById('d-data').value=hojeYMD();
+  document.getElementById('demitirModal').classList.add('show');
+}
+function closeDemitir(){document.getElementById('demitirModal').classList.remove('show');demitirId=null;}
+function confirmarDemissao(){
+  if(demitirId===null)return;
+  const dt=document.getElementById('d-data').value;
+  if(!dt){alert('⚠️ Informe a data da demissão.');return;}
+  const f=state.funcionarios.find(x=>String(x.id)===String(demitirId));
+  if(!f){closeDemitir();return;}
+  f.status='Inativo';f.demissao=dt;
+  save();closeDemitir();renderAll();
+  alert('✅ Demissão registrada com sucesso!');
+}
+function readmitir(id){
+  const f=state.funcionarios.find(x=>String(x.id)===String(id));
+  if(!f){alert('Funcionário não encontrado.');return;}
+  if(!confirm('↩️ Readmitir '+f.nome+'?'))return;
+  f.status='Ativo';f.demissao='';
+  save();renderAll();
+  alert('✅ Funcionário readmitido com sucesso!');
+}
+ 
+/* ================= EDIÇÃO ================= */
+function openEditFunc(id){
+  const idx=state.funcionarios.findIndex(f=>String(f.id)===String(id));
+  if(idx===-1){alert("Funcionário não encontrado.");return;}
+  openEdit('funcionarios',idx);
+}
+function fieldHTML(label,inner){return '<div class="field"><label>'+label+'</label>'+inner+'</div>';}
+function opts(arr,val){return arr.map(o=>'<option value="'+esc(o)+'"'+(String(o)===String(val)?' selected':'')+'>'+esc(o)+'</option>').join('');}
+function selFuncHTML(val){
+  const fs=state.funcionarios.slice().sort(porNome);
+  return '<select data-name="func">'+fs.map(f=>'<option value="'+esc(f.id)+'"'+(String(f.id)===String(val)?' selected':'')+'>'+esc(f.nome)+'</option>').join('')+'</select>';
+}
+function openEdit(key,index){
+  const arr=state[key];
+  if(!Array.isArray(arr)||typeof index!=='number'||index<0||index>=arr.length){alert('Registro não encontrado.');return;}
+  editCtx={key:key,index:index};
+  const it=arr[index];
+  let h='';
+  let titulo='✏️ Editar';
+  if(key==='funcionarios'){
+    titulo='✏️ Editar Funcionário';
+    h+=fieldHTML('Nome','<input type="text" data-name="nome" value="'+esc(it.nome)+'">');
+    h+=fieldHTML('Data de Nascimento','<input type="date" data-name="nasc" value="'+(it.nasc||'')+'">');
+    h+=fieldHTML('Data de Admissão','<input type="date" data-name="adm" value="'+(it.adm||'')+'">');
+    h+=fieldHTML('Cargo','<input type="text" data-name="cargo" value="'+esc(it.cargo||'')+'">');
+    h+=fieldHTML('Obra','<input type="text" data-name="obra" value="'+esc(it.obra||'')+'">');
+    h+=fieldHTML('Status','<select data-name="status">'+opts(['Ativo','Inativo','Sócio'],it.status)+'</select>');
+    h+=fieldHTML('Data de Demissão','<input type="date" data-name="demissao" value="'+(it.demissao||'')+'">');
+  }else if(key==='treinamentos'){
+    titulo='✏️ Editar Treinamento';
+    h+=fieldHTML('Funcionário',selFuncHTML(it.func));
+    h+=fieldHTML('Treinamento','<select data-name="nr">'+opts(NRS,it.nr)+'</select>');
+    h+=fieldHTML('Data','<input type="date" data-name="data" value="'+(it.data||'')+'">');
+    h+=fieldHTML('Validade (anos)','<input type="number" min="1" data-name="val" value="'+(it.val||2)+'">');
+  }else if(key==='asos'){
+    titulo='✏️ Editar ASO';
+    h+=fieldHTML('Funcionário',selFuncHTML(it.func));
+    h+=fieldHTML('Tipo','<select data-name="tipo">'+opts(TIPOS_ASO,it.tipo)+'</select>');
+    h+=fieldHTML('Data','<input type="date" data-name="data" value="'+(it.data||'')+'">');
+    h+=fieldHTML('Validade (anos)','<input type="number" min="1" data-name="val" value="'+(it.val||1)+'">');
+  }else if(key==='vacinas'){
+    titulo='✏️ Editar Vacina';
+    h+=fieldHTML('Funcionário',selFuncHTML(it.func));
+    h+=fieldHTML('Vacina','<select data-name="nome">'+opts(VACINAS,it.nome)+'</select>');
+    h+=fieldHTML('Data','<input type="date" data-name="data" value="'+(it.data||'')+'">');
+    h+=fieldHTML('Validade (anos)','<input type="number" min="1" data-name="val" value="'+(it.val||10)+'">');
+  }else{
+    alert('Tipo de registro inválido.');return;
+  }
+  document.getElementById('editTitle').textContent=titulo;
+  document.getElementById('editFields').innerHTML=h;
+  document.getElementById('editModal').classList.add('show');
+}
+function closeEdit(){document.getElementById('editModal').classList.remove('show');editCtx=null;}
+function saveEdit(){
+  if(!editCtx){closeEdit();return;}
+  const reg=state[editCtx.key][editCtx.index];
+  if(!reg){closeEdit();return;}
+  const campos=document.querySelectorAll('#editFields [data-name]');
+  const novo={};
+  for(let i=0;i<campos.length;i++){
+    const el=campos[i];
+    const name=el.getAttribute('data-name');
+    let v=el.value;
+    if(el.type==='number'){v=parseInt(v,10);if(isNaN(v)||v<1)v=1;}
+    else if(name==='func'){v=idFunc(v);}
+    else if(el.tagName==='INPUT'&&el.type==='text'){v=String(v).trim();}
+    novo[name]=v;
+  }
+  if(editCtx.key==='funcionarios'){
+    if(!novo.nome){alert('⚠️ O nome não pode ficar vazio.');return;}
+    if(novo.status==='Inativo'&&!novo.demissao){alert('⚠️ Informe a data de demissão para funcionário inativo.');return;}
+    if(novo.status!=='Inativo')novo.demissao='';
+  }
+  Object.assign(reg,novo);
+  if(editCtx.key==='funcionarios')ordenarFuncionarios();
+  save();closeEdit();renderAll();
+  alert("✅ Alterações salvas com sucesso!");
+}
+function delItem(key,i){
+  const arr=state[key];
+  if(!Array.isArray(arr)||i<0||i>=arr.length){alert('Registro não encontrado.');return;}
+  if(!confirm('🗑️ Excluir este registro definitivamente?'))return;
+  arr.splice(i,1);
+  save();renderAll();
+  alert('✅ Registro excluído!');
+}
+ 
+/* ================= TREINAMENTOS ================= */
+function addTreinamento(){
+  const func=idFunc(document.getElementById('t-func').value);
+  const nr=document.getElementById('t-nr').value;
+  const data=document.getElementById('t-data').value;
+  const val=parseInt(document.getElementById('t-val').value,10)||2;
+  if(!func){alert('⚠️ Selecione um funcionário ativo.');return;}
+  if(!data){alert('⚠️ Informe a data do treinamento.');return;}
+  state.treinamentos.push({func:func,nr:nr,data:data,val:val});
+  save();renderAll();
+  document.getElementById('t-data').value='';
+  alert('✅ Treinamento registrado com sucesso!');
+}
+function renderTreinamentos(){
+  const busca=(document.getElementById('search-trein').value||'').toLowerCase().trim();
+  const tipo=document.getElementById('fl-trein-tipo').value;
+  const st=document.getElementById('fl-trein-status').value;
+  const rows=[];
+  state.treinamentos.forEach((t,i)=>{
+    const nome=nomeFunc(t.func);
+    const s=statusVenc(t.data,t.val);
+    if(tipo&&t.nr!==tipo)return;
+    if(st&&s.txt!==st)return;
+    if(busca&&(nome.toLowerCase().indexOf(busca)===-1&&String(t.nr).toLowerCase().indexOf(busca)===-1))return;
+    rows.push({i:i,t:t,nome:nome,s:s});
+  });
+  rows.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR',{sensitivity:'base'})||String(a.t.nr).localeCompare(String(b.t.nr)));
+  let h='';
+  if(!rows.length)h='<tr><td colspan="7" class="empty">Nenhum treinamento encontrado.</td></tr>';
+  rows.forEach(r=>{
+    const venc=r.t.data?addDias(r.t.data,(r.t.val||2)*365):'';
+    const d=venc?diasAte(venc):null;
+    h+='<tr><td><strong>'+esc(r.nome)+'</strong></td><td>'+esc(r.t.nr)+'</td><td>'+fmt(r.t.data)+'</td><td>'+fmt(venc)+'</td>'+
+       '<td>'+(d===null?'—':(d<0?'<span class="neg">'+d+'</span>':d))+'</td><td>'+tag(r.s.txt,r.s.cls)+'</td>'+
+       '<td class="acoes"><button class="btn edit sm" onclick="openEdit(\'treinamentos\','+r.i+')">✏️</button>'+
+       '<button class="btn demitir sm" onclick="delItem(\'treinamentos\','+r.i+')">🗑️</button></td></tr>';
+  });
+  setHTML('tb-trein',h);
+}
+ 
+/* ================= ASO ================= */
+function addASO(){
+  const func=idFunc(document.getElementById('a-func').value);
+  const tipo=document.getElementById('a-tipo').value;
+  const data=document.getElementById('a-data').value;
+  const val=parseInt(document.getElementById('a-val').value,10)||1;
+  if(!func){alert('⚠️ Selecione um funcionário ativo.');return;}
+  if(!data){alert('⚠️ Informe a data do exame.');return;}
+  state.asos.push({func:func,tipo:tipo,data:data,val:val});
+  save();renderAll();
+  document.getElementById('a-data').value='';
+  alert('✅ ASO registrado com sucesso!');
+}
+function renderASO(){
+  const busca=(document.getElementById('search-aso').value||'').toLowerCase().trim();
+  const tipo=document.getElementById('fl-aso-tipo').value;
+  const st=document.getElementById('fl-aso-status').value;
+  const rows=[];
+  state.asos.forEach((a,i)=>{
+    const nome=nomeFunc(a.func);
+    const s=statusVenc(a.data,a.val);
+    if(tipo&&a.tipo!==tipo)return;
+    if(st&&s.txt!==st)return;
+    if(busca&&(nome.toLowerCase().indexOf(busca)===-1&&String(a.tipo).toLowerCase().indexOf(busca)===-1))return;
+    rows.push({i:i,a:a,nome:nome,s:s});
+  });
+  rows.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR',{sensitivity:'base'}));
+  let h='';
+  if(!rows.length)h='<tr><td colspan="7" class="empty">Nenhum ASO encontrado.</td></tr>';
+  rows.forEach(r=>{
+    const venc=r.a.data?addDias(r.a.data,(r.a.val||1)*365):'';
+    const d=venc?diasAte(venc):null;
+    h+='<tr><td><strong>'+esc(r.nome)+'</strong></td><td>'+esc(r.a.tipo)+'</td><td>'+fmt(r.a.data)+'</td><td>'+fmt(venc)+'</td>'+
+       '<td>'+(d===null?'—':(d<0?'<span class="neg">'+d+'</span>':d))+'</td><td>'+tag(r.s.txt,r.s.cls)+'</td>'+
+       '<td class="acoes"><button class="btn edit sm" onclick="openEdit(\'asos\','+r.i+')">✏️</button>'+
+       '<button class="btn demitir sm" onclick="delItem(\'asos\','+r.i+')">🗑️</button></td></tr>';
+  });
+  setHTML('tb-aso',h);
+}
+ 
+/* ================= VACINAS ================= */
+function addVacina(){
+  const func=idFunc(document.getElementById('v-func').value);
+  const nome=document.getElementById('v-nome').value;
+  const data=document.getElementById('v-data').value;
+  const val=parseInt(document.getElementById('v-val').value,10)||10;
+  if(!func){alert('⚠️ Selecione um funcionário ativo.');return;}
+  if(!data){alert('⚠️ Informe a data da dose.');return;}
+  state.vacinas.push({func:func,nome:nome,data:data,val:val});
+  save();renderAll();
+  document.getElementById('v-data').value='';
+  alert('✅ Vacina registrada com sucesso!');
+}
+function renderVacinas(){
+  const busca=(document.getElementById('search-vac').value||'').toLowerCase().trim();
+  const nomeF=document.getElementById('fl-vac-nome').value;
+  const st=document.getElementById('fl-vac-status').value;
+  const rows=[];
+  state.vacinas.forEach((v,i)=>{
+    const nome=nomeFunc(v.func);
+    const s=statusVenc(v.data,v.val);
+    if(nomeF&&v.nome!==nomeF)return;
+    if(st&&s.txt!==st)return;
+    if(busca&&(nome.toLowerCase().indexOf(busca)===-1&&String(v.nome).toLowerCase().indexOf(busca)===-1))return;
+    rows.push({i:i,v:v,nome:nome,s:s});
+  });
+  rows.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR',{sensitivity:'base'}));
+  let h='';
+  if(!rows.length)h='<tr><td colspan="7" class="empty">Nenhuma vacina encontrada.</td></tr>';
+  rows.forEach(r=>{
+    const venc=r.v.data?addDias(r.v.data,(r.v.val||10)*365):'';
+    const d=venc?diasAte(venc):null;
+    h+='<tr><td><strong>'+esc(r.nome)+'</strong></td><td>'+esc(r.v.nome)+'</td><td>'+fmt(r.v.data)+'</td><td>'+fmt(venc)+'</td>'+
+       '<td>'+(d===null?'—':(d<0?'<span class="neg">'+d+'</span>':d))+'</td><td>'+tag(r.s.txt,r.s.cls)+'</td>'+
+       '<td class="acoes"><button class="btn edit sm" onclick="openEdit(\'vacinas\','+r.i+')">✏️</button>'+
+       '<button class="btn demitir sm" onclick="delItem(\'vacinas\','+r.i+')">🗑️</button></td></tr>';
+  });
+  setHTML('tb-vac',h);
+}
+ 
+/* ================= CONTRATOS ================= */
+function renderContratos(){
+  const busca=(document.getElementById('search-contr').value||'').toLowerCase().trim();
+  const per=document.getElementById('fl-contr-per').value;
+  const st=document.getElementById('fl-contr-status').value;
+  let lista=contratosEmExperiencia().map(f=>({f:f,sc:statusContrato(f)}));
+  lista=lista.filter(o=>{
+    if(busca&&o.f.nome.toLowerCase().indexOf(busca)===-1)return false;
+    if(per&&o.sc.per.txt!==per)return false;
+    if(st&&o.sc.status.txt!==st)return false;
+    return true;
+  });
+  lista.sort((a,b)=>a.sc.d-b.sc.d);
+  let h='';
+  if(!lista.length)h='<tr><td colspan="7" class="empty">Nenhum contrato de experiência em andamento.</td></tr>';
+  lista.forEach(o=>{
+    h+='<tr><td><strong>'+esc(o.f.nome)+'</strong></td><td>'+fmt(o.f.adm)+'</td><td>'+fmt(o.sc.fim1)+'</td><td>'+fmt(o.sc.fim2)+'</td>'+
+       '<td>'+(o.sc.d<0?'<span class="neg">'+o.sc.d+'</span>':o.sc.d)+'</td>'+
+       '<td>'+tag(o.sc.per.txt,o.sc.per.cls)+'</td><td>'+tag(o.sc.status.txt,o.sc.status.cls)+'</td></tr>';
+  });
+  setHTML('tb-contr',h);
+}
+ 
+/* ================= ANIVERSÁRIOS ================= */
+function renderAniversarios(){
+  const rows=[];
+  state.funcionarios.forEach(f=>{
+    if(!f.nasc)return;
+    const p=proximoAniversario(f.nasc);
+    if(!p)return;
+    rows.push({f:f,p:p});
+  });
+  rows.sort((a,b)=>a.p.dias-b.p.dias);
+  let h='';
+  if(!rows.length)h='<tr><td colspan="5" class="empty">Nenhuma data de nascimento cadastrada.</td></tr>';
+  rows.forEach(r=>{
+    const st=r.p.dias<=30?tag('PRÓXIMO','t-aniv'):'<span style="color:#94a3b8">—</span>';
+    h+='<tr><td><strong>'+esc(r.f.nome)+'</strong></td><td>'+fmt(r.f.nasc)+'</td><td>'+fmt(r.p.data)+'</td><td>'+r.p.dias+'</td><td>'+st+'</td></tr>';
+  });
+  setHTML('tb-aniv',h);
+  let hp='';
+  const prox=rows.slice(0,10);
+  if(!prox.length)hp='<tr><td colspan="4" class="empty">Nenhuma data de nascimento cadastrada.</td></tr>';
+  prox.forEach(r=>{
+    hp+='<tr><td><strong>'+esc(r.f.nome)+'</strong></td><td>'+fmt(r.f.nasc)+'</td><td>'+fmt(r.p.data)+'</td><td>'+(r.p.dias===0?'🎉 Hoje':r.p.dias)+'</td></tr>';
+  });
+  setHTML('tb-aniv-prox',hp);
+}
+ 
+/* ================= DASHBOARD ================= */
+function renderDashboard(){
+  const fs=state.funcionarios;
+  const itens=[];
+  state.treinamentos.forEach(t=>{
+    if(!t.data)return;
+    const venc=addDias(t.data,(t.val||2)*365);const d=diasAte(venc);if(d===null)return;
+    itens.push({nome:nomeFunc(t.func),item:String(t.nr),venc:venc,d:d,tipo:'trein'});
+  });
+  state.asos.forEach(a=>{
+    if(!a.data)return;
+    const venc=addDias(a.data,(a.val||1)*365);const d=diasAte(venc);if(d===null)return;
+    itens.push({nome:nomeFunc(a.func),item:'ASO '+a.tipo,venc:venc,d:d,tipo:'aso'});
+  });
+  state.vacinas.forEach(v=>{
+    if(!v.data)return;
+    const venc=addDias(v.data,(v.val||10)*365);const d=diasAte(venc);if(d===null)return;
+    itens.push({nome:nomeFunc(v.func),item:'Vacina '+v.nome,venc:venc,d:d,tipo:'vac'});
+  });
+  contratosEmExperiencia().forEach(f=>{
+    const sc=statusContrato(f);
+    itens.push({nome:f.nome,item:'Contrato '+sc.per.txt,venc:sc.fim2,d:sc.d,tipo:'contr'});
+  });
+  function conta(tipo){return itens.filter(i=>i.tipo===tipo&&i.d>=0&&i.d<=30).length;}
+  setHTML('k-total',fs.length);
+  setHTML('k-ativos',fs.filter(f=>f.status==='Ativo').length);
+  setHTML('k-inativos',fs.filter(f=>f.status==='Inativo').length);
+  setHTML('k-exp',contratosEmExperiencia().length);
+  setHTML('k-trein',conta('trein'));
+  setHTML('k-aso',conta('aso'));
+  setHTML('k-vac',conta('vac'));
+  const mes=new Date().getMonth();
+  setHTML('k-aniv',fs.filter(f=>{if(!f.nasc)return false;const p=proximoAniversario(f.nasc);if(!p)return false;return parseLocal(p.data).getMonth()===mes;}).length);
+  setBadge('b-trein',conta('trein'));
+  setBadge('b-aso',conta('aso'));
+  setBadge('b-vac',conta('vac'));
+  setBadge('b-contr',itens.filter(i=>i.tipo==='contr'&&i.d>=0&&i.d<=30).length);
+  const faixas=[['al-5',0,5],['al-15',6,15],['al-30',16,30]];
+  faixas.forEach(fx=>{
+    const lst=itens.filter(i=>i.d>=fx[1]&&i.d<=fx[2]).sort((a,b)=>a.d-b.d);
+    let h='';
+    if(!lst.length)h='<li class="none">Nenhum item neste período.</li>';
+    lst.forEach(i=>{h+='<li>'+esc(i.nome)+' | '+esc(i.item)+' | '+fmt(i.venc)+'</li>';});
+    setHTML(fx[0],h);
+  });
+}
+function setBadge(id,n){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.textContent=n;
+  el.classList.toggle('zero',n===0);
+}
+ 
+/* ================= SELECTS ================= */
+function fillSelects(){
+  const ativos=state.funcionarios.filter(f=>f.status==='Ativo').slice().sort(porNome);
+  ['t-func','a-func','v-func'].forEach(id=>{
+    const sel=document.getElementById(id);
+    if(!sel)return;
+    const atual=sel.value;
+    sel.innerHTML=ativos.map(f=>'<option value="'+esc(f.id)+'">'+esc(f.nome)+'</option>').join('');
+    if(atual&&ativos.some(f=>String(f.id)===String(atual)))sel.value=atual;
+  });
+}
+function atualizaOpcoesFiltros(){
+  const obras=[...new Set(state.funcionarios.map(f=>f.obra).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR'));
+  const cargos=[...new Set(state.funcionarios.map(f=>f.cargo).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR'));
+  const so=document.getElementById('fl-obra'),sc=document.getElementById('fl-cargo');
+  if(!so||!sc)return;
+  const vo=so.value,vc=sc.value;
+  so.innerHTML='<option value="">Todas</option>'+obras.map(o=>'<option value="'+esc(o)+'">'+esc(o)+'</option>').join('');
+  sc.innerHTML='<option value="">Todos</option>'+cargos.map(o=>'<option value="'+esc(o)+'">'+esc(o)+'</option>').join('');
+  if(vo)so.value=vo;
+  if(vc)sc.value=vc;
+}
+ 
+/* ================= RENDER ALL ================= */
+function renderAll(){
+  atualizaOpcoesFiltros();
+  renderFuncionarios();
+  renderTreinamentos();
+  renderASO();
+  renderVacinas();
+  renderContratos();
+  renderAniversarios();
+  fillSelects();
+  renderDashboard();
+}
+ 
+/* ================= EXPORTAR / IMPORTAR ================= */
+function exportarDados(){
+  const dados=JSON.stringify(state,null,2);
+  const blob=new Blob([dados],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='sistema-funcionarios-dados.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  alert("✅ Banco de dados exportado com sucesso!\n\nO arquivo sistema-funcionarios-dados.json foi baixado.");
+}
+ 
+function importarDados(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  if(!file.name.toLowerCase().endsWith('.json')){
+    alert("❌ Selecione um arquivo .json exportado pelo sistema.\n\nArquivo recebido: "+file.name);
+    event.target.value='';
+    return;
+  }
+  const reader=new FileReader();
+  reader.onerror=function(){
+    alert("❌ Erro ao ler o arquivo. Tente novamente.");
+    event.target.value='';
+  };
+  reader.onload=function(e){
+    try{
+      const dados=JSON.parse(e.target.result);
+      if(!dados||typeof dados!=='object'||!Array.isArray(dados.funcionarios)){
+        alert("❌ Arquivo inválido: não é um banco de dados deste sistema.\n\nO arquivo deve conter a lista 'funcionarios'. Exporte novamente usando o botão ⬇️ Exportar Dados.");
+        event.target.value='';
+        return;
+      }
+      const nf=dados.funcionarios.length||0;
+      const nt=Array.isArray(dados.treinamentos)?dados.treinamentos.length:0;
+      const na=Array.isArray(dados.asos)?dados.asos.length:0;
+      const nv=Array.isArray(dados.vacinas)?dados.vacinas.length:0;
+      if(!confirm("📥 Importar banco de dados?\n\nFuncionários: "+nf+"\nTreinamentos: "+nt+"\nASOs: "+na+"\nVacinas: "+nv+"\n\n⚠️ Isso SUBSTITUI todos os dados atuais do sistema.")){
+        event.target.value='';
+        return;
+      }
+      dados.funcionarios=dados.funcionarios.map(f=>({id:f.id||Date.now()+Math.floor(Math.random()*100000),nome:f.nome||"Sem nome",nasc:f.nasc||"",adm:f.adm||"",cargo:f.cargo||"",obra:f.obra||"",status:f.status||"Ativo",demissao:f.demissao||""}));
+      dados.treinamentos=Array.isArray(dados.treinamentos)?dados.treinamentos:[];
+      dados.asos=Array.isArray(dados.asos)?dados.asos:[];
+      dados.vacinas=Array.isArray(dados.vacinas)?dados.vacinas:[];
+      state=dados;
+      ordenarFuncionarios();
+      save();
+      renderAll();
+      alert("✅ Banco de dados importado com sucesso!\n\nFuncionários: "+state.funcionarios.length+"\nTreinamentos: "+state.treinamentos.length+"\nASOs: "+state.asos.length+"\nVacinas: "+state.vacinas.length);
+    }catch(err){
+      alert("❌ Erro ao importar: arquivo inválido ou corrompido.\n\nDetalhe técnico: "+err.message);
+    }
+    event.target.value='';
+  };
+  reader.readAsText(file);
+}
+ 
+/* ================= RELATÓRIO ================= */
+function listaAtivosOrdenada(){return state.funcionarios.filter(f=>f.status==='Ativo').slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR',{sensitivity:'base'}));}
+function abrirRelatorio(){
+  const l=listaAtivosOrdenada();
+  const emissao=new Date().toLocaleDateString('pt-BR');
+  document.getElementById('rel-total').textContent='Total de '+l.length+' ativo(s) — emitido em '+emissao;
+  let h='';
+  if(!l.length)h='<tr><td colspan="5" class="empty">Nenhum funcionário ativo.</td></tr>';
+  l.forEach((f,i)=>{
+    h+='<tr><td>'+(i+1)+'</td><td><strong>'+esc(f.nome)+'</strong></td><td>'+fmt(f.adm)+'</td><td>'+esc(f.cargo||'—')+'</td><td>'+esc(f.obra||'—')+'</td></tr>';
+  });
+  setHTML('tb-relatorio',h);
+  document.getElementById('relatorioModal').classList.add('show');
+}
+function fecharRelatorio(){document.getElementById('relatorioModal').classList.remove('show');}
+function baixarCSV(){
+  const l=listaAtivosOrdenada();
+  let csv='\uFEFF'+'Nome Completo;Data de Admissão;Cargo;Obra\n';
+  l.forEach(f=>{
+    csv+='"'+String(f.nome).replace(/"/g,'""')+'";"'+fmt(f.adm)+'";"'+String(f.cargo||'').replace(/"/g,'""')+'";"'+String(f.obra||'').replace(/"/g,'""')+'"\n';
+  });
+  csv+='Total de funcionários ativos;'+l.length+';;;\n';
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='relatorio-funcionarios-ativos.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  alert('✅ Relatório CSV gerado com '+l.length+' funcionário(s) ativo(s).');
+}
+function imprimirRelatorio(){
+  const l=listaAtivosOrdenada();
+  const emissao=new Date().toLocaleString('pt-BR');
+  let linhas='';
+  l.forEach((f,i)=>{
+    linhas+='<tr style="background:'+(i%2?'#f1f5f9':'#fff')+'"><td>'+(i+1)+'</td><td><strong>'+esc(f.nome)+'</strong></td><td>'+fmt(f.adm)+'</td><td>'+esc(f.cargo||'—')+'</td><td>'+esc(f.obra||'—')+'</td></tr>';
+  });
+  const doc='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Funcionários Ativos</title>'+
+    '<style>body{font-family:Arial,Helvetica,sans-serif;padding:26px;color:#0f172a}h1{font-size:20px;color:#1e3a5f;margin-bottom:4px}'+
+    'p.sub{font-size:12px;color:#64748b;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:12px}'+
+    'th{background:#1e3a5f;color:#fff;padding:8px 9px;text-align:left}td{padding:6px 9px;border-bottom:1px solid #e2e8f0}'+
+    'tfoot td{font-weight:700;padding-top:12px;border:none;font-size:12px}</style></head><body>'+
+    '<h1>📊 Relatório de Funcionários Ativos</h1>'+
+    '<p class="sub">Emitido em '+esc(emissao)+'</p>'+
+    '<table><thead><tr><th>#</th><th>Nome Completo</th><th>Data de Admissão</th><th>Cargo</th><th>Obra</th></tr></thead>'+
+    '<tbody>'+linhas+'</tbody><tfoot><tr><td colspan="5">Total de funcionários ativos: '+l.length+'</td></tr></tfoot></table>'+
+    '<'+'script>window.onload=function(){window.print();};<'+'/script>'+
+    '</body></html>';
+  const w=window.open('','_blank');
+  if(!w){alert('⚠️ Permita pop-ups para imprimir o relatório.');return;}
+  w.document.open();
+  w.document.write(doc);
+  w.document.close();
+}
+ 
+/* ================= INIT ================= */
+function init(){
+  const h=new Date();
+  let extenso='';
+  try{extenso=h.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});}catch(e){extenso=h.toLocaleDateString('pt-BR');}
+  document.getElementById('today').textContent='Hoje: '+extenso;
+  load();
+  ordenarFuncionarios();
+  document.querySelectorAll('.nav-item').forEach(el=>{
+    el.addEventListener('click',()=>irPara(el.dataset.view));
+  });
+  renderAll();
+}
+init();
+ 
+</script>
+</body>
+</html>
+ 
