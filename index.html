@@ -108,6 +108,9 @@ td.acoes{white-space:nowrap}
 .login-box .field{margin-bottom:12px}
 .login-box .btn{width:100%;margin-top:4px}
 .login-erro{color:var(--vermelho);font-size:12.5px;font-weight:600;min-height:18px;margin-bottom:6px}
+.check{display:flex!important;align-items:center;gap:8px;font-size:13px!important;color:#0f172a!important;cursor:pointer;padding-top:8px}
+.check input{width:auto}
+body:not(.is-admin) .admin-only{display:none}
 @media(max-width:1024px){ .main{padding:20px} .kpis{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))} }
 @media(max-width:800px){ .sidebar{width:64px} .sidebar h1,.sidebar .sub,.nav-item span,.db-section{display:none} .nav-item{justify-content:center;padding:14px;font-size:16px} .main{padding:14px;margin-left:64px} .topbar h2{font-size:18px} .filtros{grid-template-columns:1fr 1fr} .card{padding:14px} .alerts{grid-template-columns:1fr} }
 @media(max-width:600px){ .main{padding:10px} .kpis{grid-template-columns:repeat(2,1fr);gap:10px} .kpi .num{font-size:22px} .kpi .lbl{font-size:11px} .filtros{grid-template-columns:1fr} .form-grid{grid-template-columns:1fr} .topbar{flex-direction:column;align-items:flex-start} .btn{width:100%} .btn.sm,.form-actions .btn{width:auto} .modal{padding:12px} #editFields{grid-template-columns:1fr} }
@@ -126,6 +129,7 @@ td.acoes{white-space:nowrap}
   <div class="nav-item" data-view="vacinas">💉 <span>Vacinas</span><span class="badge zero" id="b-vac">0</span></div>
   <div class="nav-item" data-view="contratos">📄 <span>Contratos Exp.</span><span class="badge zero" id="b-contr">0</span></div>
   <div class="nav-item" data-view="aniversarios">🎂 <span>Aniversários</span></div>
+  <div class="nav-item" data-view="acesso">🔐 <span>Acesso</span></div>
   <div class="db-section">
     <h3>💾 BANCO DE DADOS</h3>
     <button class="btn" onclick="exportarDados()">⬇️ Exportar Dados</button>
@@ -359,6 +363,45 @@ td.acoes{white-space:nowrap}
       </div>
     </div>
   </section>
+
+  <section id="view-acesso" class="view hidden">
+    <div class="card">
+      <h3>🔑 Alterar minha senha</h3>
+      <form onsubmit="trocarMinhaSenha(event)" autocomplete="off">
+        <div class="form-grid">
+          <div class="field"><label for="s-atual">Senha atual</label><input type="password" id="s-atual" autocomplete="current-password" required></div>
+          <div class="field"><label for="s-nova">Nova senha (mín. 8 caracteres)</label><input type="password" id="s-nova" autocomplete="new-password" minlength="8" required></div>
+          <div class="field"><label for="s-nova2">Repita a nova senha</label><input type="password" id="s-nova2" autocomplete="new-password" minlength="8" required></div>
+        </div>
+        <div class="form-actions"><button class="btn" type="submit">Salvar nova senha</button></div>
+      </form>
+      <p class="legend">Ao trocar a senha, você continua conectado aqui e é desconectado dos outros aparelhos.</p>
+    </div>
+
+    <div class="card admin-only">
+      <h3>➕ Cadastrar usuário</h3>
+      <form onsubmit="cadastrarUsuario(event)" autocomplete="off">
+        <div class="form-grid">
+          <div class="field"><label for="u-nome">Usuário</label><input type="text" id="u-nome" autocomplete="off" autocapitalize="none" placeholder="ex.: maria" pattern="[a-zA-Z0-9._\-]{3,32}" title="3 a 32 caracteres: letras, números, ponto, hífen ou sublinhado" required></div>
+          <div class="field"><label for="u-senha">Senha inicial (mín. 8 caracteres)</label><input type="password" id="u-senha" autocomplete="new-password" minlength="8" required></div>
+          <div class="field"><label for="u-senha2">Repita a senha</label><input type="password" id="u-senha2" autocomplete="new-password" minlength="8" required></div>
+          <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" id="u-admin"> Administrador</label></div>
+        </div>
+        <div class="form-actions"><button class="btn admitir" type="submit">✅ Cadastrar usuário</button></div>
+      </form>
+      <p class="legend">Administradores podem cadastrar, redefinir senha e remover usuários. Os demais só usam o sistema e trocam a própria senha.</p>
+    </div>
+
+    <div class="card admin-only">
+      <h3>👥 Usuários do sistema</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Usuário</th><th>Perfil</th><th>Criado em</th><th>Ações</th></tr></thead>
+          <tbody id="tb-usuarios"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 </div>
  
 <div class="login" id="login">
@@ -369,6 +412,19 @@ td.acoes{white-space:nowrap}
     <div class="field"><label for="l-senha">Senha</label><input type="password" id="l-senha" autocomplete="current-password" required></div>
     <div class="login-erro" id="login-erro"></div>
     <button class="btn" type="submit" id="l-btn">Entrar</button>
+  </form>
+</div>
+
+<div class="modal" id="senhaModal">
+  <form class="modal-box" onsubmit="confirmarRedefinicao(event)" autocomplete="off">
+    <h3>🔑 Redefinir senha</h3>
+    <p style="font-size:13px;color:#334155;margin-bottom:14px;font-weight:600">Usuário: <span id="senha-user-nome"></span></p>
+    <div class="field" style="margin-bottom:10px"><label for="rs-senha">Nova senha (mín. 8 caracteres)</label><input type="password" id="rs-senha" autocomplete="new-password" minlength="8" required></div>
+    <div class="field"><label for="rs-senha2">Repita a nova senha</label><input type="password" id="rs-senha2" autocomplete="new-password" minlength="8" required></div>
+    <div class="modal-actions">
+      <button class="btn sec" type="button" onclick="fecharSenhaModal()">Cancelar</button>
+      <button class="btn" type="submit">Redefinir senha</button>
+    </div>
   </form>
 </div>
 
@@ -420,7 +476,7 @@ const CHAVE='sistemaFuncV12';
 const NRS=['NR 06','NR 10','NR 12','NR 18','NR 33','NR 35'];
 const TIPOS_ASO=['Admissional','Periódico','Demissional'];
 const VACINAS=['Antitetânica','Hepatite B','Febre Amarela','Gripe','COVID-19'];
-const TITULOS={dashboard:'📊 Painel',funcionarios:'👤 Funcionários',treinamentos:'🛡️ Treinamentos NR',aso:'🩺 ASO',vacinas:'💉 Vacinas',contratos:'📄 Contratos de Experiência',aniversarios:'🎂 Aniversários'};
+const TITULOS={dashboard:'📊 Painel',funcionarios:'👤 Funcionários',treinamentos:'🛡️ Treinamentos NR',aso:'🩺 ASO',vacinas:'💉 Vacinas',contratos:'📄 Contratos de Experiência',aniversarios:'🎂 Aniversários',acesso:'🔐 Acesso'};
  
 let state={funcionarios:[],treinamentos:[],asos:[],vacinas:[]};
 let filtroFunc='ativos';
@@ -536,7 +592,82 @@ async function atualizarSeMudou(){
     }
   }catch(e){}
 }
-function mostrarUsuario(){setHTML('user-nome',esc(usuarioAtual));}
+function mostrarUsuario(){setHTML('user-nome',esc(usuarioAtual)+(usuarioAdmin?' (admin)':''));document.body.classList.toggle('is-admin',usuarioAdmin);}
+
+/* ================= ACESSO (senha e usuários) ================= */
+let usuarioAdmin=false;
+async function trocarMinhaSenha(ev){
+  ev.preventDefault();
+  const atual=document.getElementById('s-atual').value,nova=document.getElementById('s-nova').value,nova2=document.getElementById('s-nova2').value;
+  if(nova!==nova2){alert('⚠️ As novas senhas não conferem.');return;}
+  if(nova===atual){alert('⚠️ A nova senha deve ser diferente da atual.');return;}
+  try{
+    const r=await api('POST','/api/senha',{senha_atual:atual,nova_senha:nova});
+    if(r.status===401){mostrarLogin('Sua sessão expirou. Entre novamente.');return;}
+    if(!r.ok){alert('⚠️ '+(r.json.erro||('Erro '+r.status)));return;}
+    ['s-atual','s-nova','s-nova2'].forEach(id=>{document.getElementById(id).value='';});
+    alert('✅ Senha alterada com sucesso!');
+  }catch(e){alert('⚠️ Sem conexão com o servidor.');}
+}
+async function carregarUsuarios(){
+  if(!usuarioAdmin)return;
+  try{
+    const r=await api('GET','/api/usuarios');
+    if(r.status===401){mostrarLogin('Sua sessão expirou. Entre novamente.');return;}
+    if(!r.ok){setHTML('tb-usuarios','<tr><td colspan="4" class="empty">'+esc(r.json.erro||'Erro ao carregar.')+'</td></tr>');return;}
+    let h='';
+    r.json.usuarios.forEach(u=>{
+      const eu=u.usuario===usuarioAtual;
+      h+='<tr><td><strong>'+esc(u.usuario)+'</strong>'+(eu?' <span class="legend">(você)</span>':'')+'</td>'+
+         '<td>'+(u.admin?tag('ADMINISTRADOR','t-aniv'):tag('USUÁRIO','t-info'))+'</td>'+
+         '<td>'+fmt((u.criado_em||'').slice(0,10))+'</td>'+
+         '<td class="acoes">'+(eu?'<span class="legend">Use “Alterar minha senha”</span>':
+           '<button class="btn edit sm" onclick="redefinirSenhaUsuario('+jsArg(u.usuario)+')">🔑 Redefinir senha</button>'+
+           '<button class="btn demitir sm" onclick="removerUsuario('+jsArg(u.usuario)+')">🗑️ Remover</button>')+'</td></tr>';
+    });
+    setHTML('tb-usuarios',h||'<tr><td colspan="4" class="empty">Nenhum usuário.</td></tr>');
+  }catch(e){setHTML('tb-usuarios','<tr><td colspan="4" class="empty">Sem conexão com o servidor.</td></tr>');}
+}
+async function cadastrarUsuario(ev){
+  ev.preventDefault();
+  const nome=document.getElementById('u-nome').value.trim().toLowerCase(),senha=document.getElementById('u-senha').value,senha2=document.getElementById('u-senha2').value,admin=document.getElementById('u-admin').checked;
+  if(senha!==senha2){alert('⚠️ As senhas não conferem.');return;}
+  if(admin&&!confirm('⚠️ "'+nome+'" será ADMINISTRADOR e poderá gerenciar outros usuários. Confirmar?'))return;
+  try{
+    const r=await api('POST','/api/usuarios',{usuario:nome,senha:senha,admin:admin});
+    if(!r.ok){alert('⚠️ '+(r.json.erro||('Erro '+r.status)));return;}
+    ['u-nome','u-senha','u-senha2'].forEach(id=>{document.getElementById(id).value='';});
+    document.getElementById('u-admin').checked=false;
+    alert('✅ Usuário "'+nome+'" cadastrado!\n\nInforme a senha inicial à pessoa e peça para ela trocá-la em 🔐 Acesso.');
+    carregarUsuarios();
+  }catch(e){alert('⚠️ Sem conexão com o servidor.');}
+}
+function redefinirSenhaUsuario(nome){
+  document.getElementById('senha-user-nome').textContent=nome;
+  document.getElementById('rs-senha').value='';document.getElementById('rs-senha2').value='';
+  document.getElementById('senhaModal').classList.add('show');
+  setTimeout(()=>document.getElementById('rs-senha').focus(),50);
+}
+function fecharSenhaModal(){document.getElementById('senhaModal').classList.remove('show');}
+async function confirmarRedefinicao(ev){
+  ev.preventDefault();
+  const nome=document.getElementById('senha-user-nome').textContent,senha=document.getElementById('rs-senha').value;
+  if(senha!==document.getElementById('rs-senha2').value){alert('⚠️ As senhas não conferem.');return;}
+  try{
+    const r=await api('POST','/api/usuarios/redefinir',{usuario:nome,senha:senha});
+    if(!r.ok){alert('⚠️ '+(r.json.erro||('Erro '+r.status)));return;}
+    fecharSenhaModal();
+    alert('✅ Senha de "'+nome+'" redefinida. Ela foi desconectada de todos os aparelhos.');
+  }catch(e){alert('⚠️ Sem conexão com o servidor.');}
+}
+async function removerUsuario(nome){
+  if(!confirm('🗑️ Remover o usuário "'+nome+'"? Ele perderá o acesso imediatamente.'))return;
+  try{
+    const r=await api('POST','/api/usuarios/remover',{usuario:nome});
+    if(!r.ok){alert('⚠️ '+(r.json.erro||('Erro '+r.status)));return;}
+    carregarUsuarios();
+  }catch(e){alert('⚠️ Sem conexão com o servidor.');}
+}
 function mostrarLogin(msg){
   usuarioAtual='';
   document.getElementById('login').classList.remove('hidden');
@@ -551,7 +682,7 @@ async function fazerLogin(ev){
     const r=await api('POST','/api/login',{usuario:document.getElementById('l-usuario').value,senha:document.getElementById('l-senha').value});
     if(!r.ok){erro.textContent=r.json.erro||('Erro ao entrar ('+r.status+').');return;}
     document.getElementById('l-senha').value='';
-    usuarioAtual=r.json.usuario;mostrarUsuario();
+    usuarioAtual=r.json.usuario;usuarioAdmin=!!r.json.admin;mostrarUsuario();
     document.getElementById('login').classList.add('hidden');
     if(pendente)enviarEstado();else await carregarDoServidor();
   }catch(e){
@@ -563,7 +694,8 @@ async function fazerLogin(ev){
 async function sair(){
   if(pendente&&!confirm('⚠️ Há alterações que ainda não foram salvas. Sair mesmo assim?'))return;
   try{await api('POST','/api/logout');}catch(e){}
-  state=estadoVazio();versaoServidor=0;pendente=false;
+  state=estadoVazio();versaoServidor=0;pendente=false;usuarioAdmin=false;
+  document.body.classList.remove('is-admin');setHTML('tb-usuarios','');
   renderAll();setSync('');
   mostrarLogin();
 }
@@ -605,6 +737,7 @@ function irPara(v,filtro){
   document.querySelectorAll('[id^="view-"]').forEach(sec=>{sec.classList.toggle('hidden',sec.id!=='view-'+v);});
   document.getElementById('page-title').textContent=TITULOS[v]||'Painel';
   renderAll();
+  if(v==='acesso')carregarUsuarios();
   window.scrollTo(0,0);
 }
  
@@ -1193,7 +1326,7 @@ async function init(){
   try{
     const r=await api('GET','/api/me');
     if(!r.ok){mostrarLogin();return;}
-    usuarioAtual=r.json.usuario;mostrarUsuario();
+    usuarioAtual=r.json.usuario;usuarioAdmin=!!r.json.admin;mostrarUsuario();
     document.getElementById('login').classList.add('hidden');
     await carregarDoServidor();
   }catch(e){

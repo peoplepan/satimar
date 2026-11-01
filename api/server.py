@@ -17,6 +17,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import sqlite3
 import sys
@@ -78,6 +79,12 @@ def criar_tabelas():
             expira_em INTEGER NOT NULL
         );
     ''')
+    colunas = [r['name'] for r in con.execute('PRAGMA table_info(usuarios)')]
+    if 'admin' not in colunas:
+        con.execute('ALTER TABLE usuarios ADD COLUMN admin INTEGER NOT NULL DEFAULT 0')
+    # sempre existe pelo menos um administrador: o usuário mais antigo
+    if not con.execute('SELECT 1 FROM usuarios WHERE admin=1').fetchone():
+        con.execute('UPDATE usuarios SET admin=1 WHERE usuario=(SELECT usuario FROM usuarios ORDER BY criado_em LIMIT 1)')
     con.close()
 
 
@@ -106,6 +113,25 @@ HASH_FALSO = hash_senha(secrets.token_hex(8))
 
 def hash_token(t):
     return hashlib.sha256(t.encode()).hexdigest()
+
+
+NOME_VALIDO = re.compile(r'^[a-z0-9._-]{3,32}$')
+
+
+def valida_nome(nome):
+    nome = str(nome or '').strip().lower()
+    if not NOME_VALIDO.match(nome):
+        raise ValueError('Usuário deve ter de 3 a 32 caracteres: letras minúsculas, números, ponto, hífen ou sublinhado.')
+    return nome
+
+
+def valida_senha(senha):
+    senha = str(senha or '')
+    if len(senha) < 8:
+        raise ValueError('A senha precisa ter pelo menos 8 caracteres.')
+    if len(senha) > 200:
+        raise ValueError('Senha muito longa.')
+    return senha
 
 
 _falhas = {}
@@ -158,15 +184,20 @@ class Handler(BaseHTTPRequestHandler):
         c = '%s=%s; Path=/api/; HttpOnly; SameSite=Strict; Max-Age=%d' % (COOKIE, token, max_age)
         return c + ('; Secure' if COOKIE_SECURE else '')
 
-    def usuario_logado(self, con):
+    def token_atual(self):
         c = SimpleCookie(self.headers.get('Cookie') or '')
-        if COOKIE not in c:
+        return c[COOKIE].value if COOKIE in c else None
+
+    def usuario_logado(self, con):
+        token = self.token_atual()
+        if not token:
             return None
-        row = con.execute('SELECT usuario, expira_em FROM sessoes WHERE token_hash=?',
-                          (hash_token(c[COOKIE].value),)).fetchone()
+        row = con.execute('SELECT s.usuario, s.expira_em, u.admin FROM sessoes s '
+                          'JOIN usuarios u ON u.usuario = s.usuario WHERE s.token_hash=?',
+                          (hash_token(token),)).fetchone()
         if not row or row['expira_em'] < time.time():
             return None
-        return row['usuario']
+        return {'usuario': row['usuario'], 'admin': bool(row['admin'])}
 
     def rota(self, metodo):
         caminho = self.path.split('?', 1)[0]
@@ -180,11 +211,24 @@ class Handler(BaseHTTPRequestHandler):
             if not usuario:
                 return self.responde(401, {'erro': 'Faça login para continuar.'})
             if metodo == 'GET' and caminho == '/api/me':
-                return self.responde(200, {'usuario': usuario})
+                return self.responde(200, usuario)
             if metodo == 'GET' and caminho == '/api/estado':
                 return self.get_estado(con)
             if metodo == 'PUT' and caminho == '/api/estado':
-                return self.put_estado(con, usuario)
+                return self.put_estado(con, usuario['usuario'])
+            if metodo == 'POST' and caminho == '/api/senha':
+                return self.trocar_senha(con, usuario['usuario'])
+            if caminho.startswith('/api/usuarios'):
+                if not usuario['admin']:
+                    return self.responde(403, {'erro': 'Apenas administradores podem gerenciar usuários.'})
+                if metodo == 'GET' and caminho == '/api/usuarios':
+                    return self.listar_usuarios(con)
+                if metodo == 'POST' and caminho == '/api/usuarios':
+                    return self.criar_usuario(con)
+                if metodo == 'POST' and caminho == '/api/usuarios/redefinir':
+                    return self.redefinir_senha(con)
+                if metodo == 'POST' and caminho == '/api/usuarios/remover':
+                    return self.remover_usuario(con, usuario['usuario'])
             return self.responde(404, {'erro': 'Rota não encontrada.'})
         except ValueError as e:
             return self.responde(400, {'erro': str(e)})
@@ -219,13 +263,63 @@ class Handler(BaseHTTPRequestHandler):
         con.execute('DELETE FROM sessoes WHERE expira_em < ?', (int(time.time()),))
         con.execute('INSERT INTO sessoes (token_hash, usuario, expira_em) VALUES (?,?,?)',
                     (hash_token(token), usuario, int(time.time()) + SESSAO_DIAS * 86400))
-        return self.responde(200, {'usuario': usuario}, self.cookie_sessao(token, SESSAO_DIAS * 86400))
+        admin = bool(con.execute('SELECT admin FROM usuarios WHERE usuario=?', (usuario,)).fetchone()['admin'])
+        return self.responde(200, {'usuario': usuario, 'admin': admin}, self.cookie_sessao(token, SESSAO_DIAS * 86400))
 
     def logout(self, con):
         c = SimpleCookie(self.headers.get('Cookie') or '')
         if COOKIE in c:
             con.execute('DELETE FROM sessoes WHERE token_hash=?', (hash_token(c[COOKIE].value),))
         return self.responde(200, {}, self.cookie_sessao('', 0))
+
+    def trocar_senha(self, con, usuario):
+        ip = self.ip()
+        if login_bloqueado(ip):
+            return self.responde(429, {'erro': 'Muitas tentativas. Aguarde 15 minutos.'})
+        corpo = self.le_json()
+        row = con.execute('SELECT senha_hash FROM usuarios WHERE usuario=?', (usuario,)).fetchone()
+        if not confere_senha(str(corpo.get('senha_atual') or ''), row['senha_hash']):
+            registra_falha(ip)
+            return self.responde(400, {'erro': 'A senha atual está incorreta.'})
+        nova = valida_senha(corpo.get('nova_senha'))
+        con.execute('UPDATE usuarios SET senha_hash=? WHERE usuario=?', (hash_senha(nova), usuario))
+        # encerra as sessões em outros aparelhos, mantém a atual
+        con.execute('DELETE FROM sessoes WHERE usuario=? AND token_hash<>?',
+                    (usuario, hash_token(self.token_atual() or '')))
+        return self.responde(200, {'ok': True})
+
+    def listar_usuarios(self, con):
+        rows = con.execute('SELECT usuario, admin, criado_em FROM usuarios ORDER BY usuario').fetchall()
+        return self.responde(200, {'usuarios': [{'usuario': r['usuario'], 'admin': bool(r['admin']),
+                                                 'criado_em': r['criado_em']} for r in rows]})
+
+    def criar_usuario(self, con):
+        corpo = self.le_json()
+        nome = valida_nome(corpo.get('usuario'))
+        senha = valida_senha(corpo.get('senha'))
+        if con.execute('SELECT 1 FROM usuarios WHERE usuario=?', (nome,)).fetchone():
+            return self.responde(409, {'erro': 'Já existe um usuário com esse nome.'})
+        con.execute('INSERT INTO usuarios (usuario, senha_hash, criado_em, admin) VALUES (?,?,?,?)',
+                    (nome, hash_senha(senha), agora_iso(), 1 if corpo.get('admin') else 0))
+        return self.responde(201, {'usuario': nome})
+
+    def redefinir_senha(self, con):
+        corpo = self.le_json()
+        nome = valida_nome(corpo.get('usuario'))
+        senha = valida_senha(corpo.get('senha'))
+        n = con.execute('UPDATE usuarios SET senha_hash=? WHERE usuario=?', (hash_senha(senha), nome)).rowcount
+        if not n:
+            return self.responde(404, {'erro': 'Usuário não encontrado.'})
+        con.execute('DELETE FROM sessoes WHERE usuario=?', (nome,))
+        return self.responde(200, {'ok': True})
+
+    def remover_usuario(self, con, quem):
+        nome = valida_nome(self.le_json().get('usuario'))
+        if nome == quem:
+            return self.responde(400, {'erro': 'Você não pode remover o seu próprio usuário.'})
+        if not con.execute('DELETE FROM usuarios WHERE usuario=?', (nome,)).rowcount:
+            return self.responde(404, {'erro': 'Usuário não encontrado.'})
+        return self.responde(200, {'ok': True})
 
     def get_estado(self, con):
         row = con.execute('SELECT * FROM estado WHERE id=1').fetchone()
