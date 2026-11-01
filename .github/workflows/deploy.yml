@@ -1,0 +1,41 @@
+name: Deploy na VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: 143.95.185.118
+      VPS_PORT: 22022
+      VPS_USER: deploy
+      VPS_PATH: /var/www/satimar/
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar chave SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Identidade fixa da VPS (evita conectar em servidor falso)
+          echo "[143.95.185.118]:22022 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHq4ljXjKWmqS73eMS7PXG61qMbaYvh/Sc8mwad4EEy6" > ~/.ssh/known_hosts
+
+      - name: Enviar arquivos para a VPS
+        run: |
+          rsync -avz --delete \
+            --exclude '.git/' --exclude '.github/' --exclude '.gitignore' --exclude 'README.md' \
+            -e "ssh -i ~/.ssh/deploy_key -p $VPS_PORT -o IdentitiesOnly=yes" \
+            ./ "$VPS_USER@$VPS_HOST:$VPS_PATH"
+
+      - name: Conferir se o site responde
+        run: |
+          curl -fsS -o /dev/null -w "HTTP %{http_code}\n" -H "Host: peopleplanrh.com.br" "http://$VPS_HOST/"
