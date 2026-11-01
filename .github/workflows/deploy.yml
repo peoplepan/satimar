@@ -29,13 +29,25 @@ jobs:
           # Identidade fixa da VPS (evita conectar em servidor falso)
           echo "[143.95.185.118]:22022 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHq4ljXjKWmqS73eMS7PXG61qMbaYvh/Sc8mwad4EEy6" > ~/.ssh/known_hosts
 
-      - name: Enviar arquivos para a VPS
+      - name: Enviar site para a VPS
         run: |
           rsync -avz --delete \
-            --exclude '.git/' --exclude '.github/' --exclude '.gitignore' --exclude 'README.md' \
+            --exclude '.git/' --exclude '.github/' --exclude '.gitignore' --exclude 'README.md' --exclude 'api/' \
             -e "ssh -i ~/.ssh/deploy_key -p $VPS_PORT -o IdentitiesOnly=yes" \
             ./ "$VPS_USER@$VPS_HOST:$VPS_PATH"
 
+      - name: Enviar API e reiniciar
+        run: |
+          rsync -avz --delete --exclude '__pycache__/' \
+            -e "ssh -i ~/.ssh/deploy_key -p $VPS_PORT -o IdentitiesOnly=yes" \
+            ./api/ "$VPS_USER@$VPS_HOST:/opt/satimar/api/"
+          ssh -i ~/.ssh/deploy_key -p $VPS_PORT -o IdentitiesOnly=yes "$VPS_USER@$VPS_HOST" \
+            'sudo -n systemctl restart satimar-api'
+          sleep 2
+
       - name: Conferir se o site responde
         run: |
-          curl -fsS -o /dev/null -w "HTTP %{http_code}\n" https://peopleplanrh.com.br/
+          curl -fsS -o /dev/null -w "Site: HTTP %{http_code}\n" https://peopleplanrh.com.br/
+          # sem login a API deve responder 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' https://peopleplanrh.com.br/api/me)" = "401"
+          echo "API: respondendo"

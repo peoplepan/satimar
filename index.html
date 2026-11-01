@@ -96,6 +96,18 @@ td.acoes{white-space:nowrap}
 #editFields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #rel-total{font-size:13px;color:var(--cinza);font-weight:600;margin-bottom:12px}
 .legend{font-size:11px;color:var(--cinza);margin-top:8px;line-height:1.5}
+.topbar-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.sync{font-size:12px;font-weight:600;color:var(--cinza)}
+.sync.ok{color:var(--verde)}
+.sync.err{color:var(--vermelho)}
+.user-box{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--azul);font-weight:600}
+.login{position:fixed;inset:0;background:linear-gradient(135deg,#1e3a5f,#0d9488);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px}
+.login-box{background:#fff;border-radius:14px;padding:28px 26px;width:100%;max-width:360px;box-shadow:0 18px 45px rgba(0,0,0,.3)}
+.login-box h2{font-size:19px;color:var(--azul);margin-bottom:4px}
+.login-box p{font-size:12.5px;color:var(--cinza);margin-bottom:18px}
+.login-box .field{margin-bottom:12px}
+.login-box .btn{width:100%;margin-top:4px}
+.login-erro{color:var(--vermelho);font-size:12.5px;font-weight:600;min-height:18px;margin-bottom:6px}
 @media(max-width:1024px){ .main{padding:20px} .kpis{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))} }
 @media(max-width:800px){ .sidebar{width:64px} .sidebar h1,.sidebar .sub,.nav-item span,.db-section{display:none} .nav-item{justify-content:center;padding:14px;font-size:16px} .main{padding:14px;margin-left:64px} .topbar h2{font-size:18px} .filtros{grid-template-columns:1fr 1fr} .card{padding:14px} .alerts{grid-template-columns:1fr} }
 @media(max-width:600px){ .main{padding:10px} .kpis{grid-template-columns:repeat(2,1fr);gap:10px} .kpi .num{font-size:22px} .kpi .lbl{font-size:11px} .filtros{grid-template-columns:1fr} .form-grid{grid-template-columns:1fr} .topbar{flex-direction:column;align-items:flex-start} .btn{width:100%} .btn.sm,.form-actions .btn{width:auto} .modal{padding:12px} #editFields{grid-template-columns:1fr} }
@@ -125,7 +137,11 @@ td.acoes{white-space:nowrap}
 <div class="main">
   <div class="topbar">
     <h2 id="page-title">📊 Painel</h2>
-    <span class="date" id="today"></span>
+    <div class="topbar-right">
+      <span class="date" id="today"></span>
+      <span class="sync" id="sync-status"></span>
+      <span class="user-box">👤 <span id="user-nome"></span><button class="btn sec sm" onclick="sair()">Sair</button></span>
+    </div>
   </div>
  
   <section id="view-dashboard" class="view">
@@ -345,6 +361,17 @@ td.acoes{white-space:nowrap}
   </section>
 </div>
  
+<div class="login" id="login">
+  <form class="login-box" onsubmit="fazerLogin(event)" autocomplete="on">
+    <h2>👥 Controle de Funcionários</h2>
+    <p>Entre com seu usuário e senha.</p>
+    <div class="field"><label for="l-usuario">Usuário</label><input type="text" id="l-usuario" autocomplete="username" autocapitalize="none" required></div>
+    <div class="field"><label for="l-senha">Senha</label><input type="password" id="l-senha" autocomplete="current-password" required></div>
+    <div class="login-erro" id="login-erro"></div>
+    <button class="btn" type="submit" id="l-btn">Entrar</button>
+  </form>
+</div>
+
 <div class="modal" id="editModal">
   <div class="modal-box">
     <h3 id="editTitle">✏️ Editar</h3>
@@ -395,87 +422,7 @@ const TIPOS_ASO=['Admissional','Periódico','Demissional'];
 const VACINAS=['Antitetânica','Hepatite B','Febre Amarela','Gripe','COVID-19'];
 const TITULOS={dashboard:'📊 Painel',funcionarios:'👤 Funcionários',treinamentos:'🛡️ Treinamentos NR',aso:'🩺 ASO',vacinas:'💉 Vacinas',contratos:'📄 Contratos de Experiência',aniversarios:'🎂 Aniversários'};
  
-const seedFuncionarios=[
-  {id:1,nome:"ALAN OLIVEIRA SCHLUCUBIER",nasc:'',adm:"2025-09-19",cargo:"Pedreiro",obra:"Obra A",status:"Ativo",demissao:''},
-  {id:2,nome:"ATILA OLIVEIRA DOS SANTOS",nasc:'',adm:"2026-07-29",cargo:"Servente",obra:"Obra B",status:"Ativo",demissao:''},
-  {id:3,nome:"BLADIMIR VIEIRA",nasc:'',adm:"2026-07-08",cargo:"Pedreiro",obra:"Obra A",status:"Ativo",demissao:''},
-  {id:4,nome:"CARLOS LEANDRO NASCIMENTO",nasc:'',adm:"2026-04-17",cargo:"Carpinteiro",obra:"Obra C",status:"Ativo",demissao:''},
-  {id:5,nome:"CÉLIO HENRIQUE BARRETO DOS SANTOS",nasc:'',adm:"2024-09-14",cargo:"Encarregado",obra:"Obra A",status:"Ativo",demissao:''},
-  {id:6,nome:"CLEVERSON SOUZA DE CAMARGO",nasc:'',adm:"2025-08-13",cargo:"Pedreiro",obra:"Obra B",status:"Ativo",demissao:''},
-  {id:7,nome:"CLEYTON MANOEL DA ROSA",nasc:'',adm:"2026-07-29",cargo:"Servente",obra:"Obra C",status:"Ativo",demissao:''},
-  {id:8,nome:"DALME MACIEL SILVA",nasc:'',adm:"2026-07-28",cargo:"Pedreiro",obra:"Obra B",status:"Ativo",demissao:''},
-  {id:9,nome:"DIEGO DA ROSA PEREIRA",nasc:'',adm:"2026-07-28",cargo:"Servente",obra:"Obra A",status:"Ativo",demissao:''},
-  {id:10,nome:"DOUGLAS DA SILVA OSTROWSKI",nasc:'',adm:"2026-02-16",cargo:"Armador",obra:"Obra C",status:"Ativo",demissao:''},
-  {id:11,nome:"ELIAS DE MATOS PARINTINS",nasc:'',adm:"2026-04-02",cargo:"Pedreiro",obra:"Obra A",status:"Ativo",demissao:''},
-  {id:12,nome:"ERON OLIVEIRA ROSA",nasc:'',adm:"2025-02-17",cargo:"Carpinteiro",obra:"Obra B",status:"Ativo",demissao:''},
-  {id:13,nome:"FABIO JUNIOR DUARTE VIEIRA",nasc:'',adm:"2025-02-03",cargo:"Pedreiro",obra:"Obra C",status:"Ativo",demissao:''},
-  {id:14,nome:"GILSON BISPO RODRIGUES",nasc:'',adm:"2025-03-03",cargo:"Servente",obra:"Obra A",status:"Ativo",demissao:''},
-  {id:15,nome:"ISAC DE NUNES DE LARA",nasc:'',adm:"2025-03-31",cargo:"Pedreiro",obra:"Obra B",status:"Ativo",demissao:''},
-  {id:16,nome:"JOANDERSON NASCIMENTO PEREIRA DOS SANTOS",nasc:'',adm:"2026-06-22",cargo:"Servente",obra:"Obra C",status:"Ativo",demissao:''},
-  {id:17,nome:"JOCENIL RIBEIRO DA COSTA",nasc:'',adm:"2026-02-24",cargo:"Pedreiro",obra:"Obra B",status:"Ativo",demissao:''},
-  {id:18,nome:"JONATHAN SOUSA EVERTON",nasc:'',adm:"2026-03-16",cargo:"Armador",obra:"Obra A",status:"Ativo",demissao:''},
-  {id:19,nome:"JOSE ANTONIO DE FREITAS",nasc:'',adm:"2025-10-23",cargo:"Encarregado",obra:"Obra C",status:"Ativo",demissao:''},
-  {id:20,nome:"JOSE WERMESON DO ESPIRITO",nasc:'',adm:"2025-06-18",cargo:"Pedreiro",obra:"Obra B",status:"Ativo",demissao:''},
-  {id:21,nome:"LEANDRO DA SILVEIRA SANTOS DE AVILA",nasc:'',adm:"2024-09-12",cargo:"Carpinteiro",obra:"Obra A",status:"Ativo",demissao:''},
-  {id:22,nome:"LEONARDO OLIVEIRA DE FARIAS",nasc:'',adm:"2026-06-01",cargo:"Pedreiro",obra:"Obra C",status:"Ativo",demissao:''},
-  {id:23,nome:"MAICON SOARES LIMA",nasc:'',adm:"2026-02-16",cargo:"Servente",obra:"Obra B",status:"Ativo",demissao:''},
-  {id:24,nome:"MANOEL LUCAS FREITAS FERREIRA",nasc:'',adm:"2026-04-14",cargo:"Armador",obra:"Obra A",status:"Ativo",demissao:''},
-  {id:25,nome:"MATEUS DE AVILA DA SILVA",nasc:'',adm:"2025-03-28",cargo:"Pedreiro",obra:"Obra C",status:"Ativo",demissao:''},
-  {id:26,nome:"OTILENE DE SOUZA CARVALHO",nasc:'',adm:"2026-08-11",cargo:"Servente",obra:"Obra B",status:"Ativo",demissao:''},
-  {id:27,nome:"RAFAEL DOS SANTOS",nasc:'',adm:"2026-03-12",cargo:"Pedreiro",obra:"Obra A",status:"Ativo",demissao:''},
-  {id:28,nome:"RAFAEL FREITAS FERREIRA",nasc:'',adm:"2026-05-13",cargo:"Servente",obra:"Obra C",status:"Ativo",demissao:''},
-  {id:29,nome:"RAILSON ALVES SILVA",nasc:'',adm:"2026-05-13",cargo:"Pedreiro",obra:"Obra B",status:"Ativo",demissao:''},
-  {id:30,nome:"SAMUEL SATIRO DE AVILA DA",nasc:'',adm:"2025-09-16",cargo:"Carpinteiro",obra:"Obra A",status:"Ativo",demissao:''},
-  {id:31,nome:"SALÉSIO FERNANDES",nasc:'',adm:"2026-08-06",cargo:"Pedreiro",obra:"Obra C",status:"Ativo",demissao:''},
-  {id:32,nome:"SATIRO DA SILVA (sócio)",nasc:'',adm:"",cargo:"Sócio",obra:"",status:"Sócio",demissao:''},
-  {id:33,nome:"WALMOR PEDROSO DA SILVA",nasc:'',adm:"2024-11-14",cargo:"Encarregado",obra:"Obra B",status:"Ativo",demissao:''}
-];
- 
-const seedTreinamentos=[
-[26,"NR 06","2026-08-12"],[26,"NR 12","2026-08-12"],[26,"NR 18","2026-08-12"],[26,"NR 35","2026-08-11"],
-[31,"NR 06","2026-08-06"],[31,"NR 12","2026-08-06"],[31,"NR 18","2026-08-06"],[31,"NR 35","2026-08-07"],
-[2,"NR 06","2026-08-12"],[2,"NR 12","2026-08-12"],[2,"NR 18","2026-08-12"],[2,"NR 35","2026-08-11"],
-[8,"NR 06","2026-07-29"],[8,"NR 12","2026-07-29"],[8,"NR 18","2026-07-29"],[8,"NR 35","2026-07-30"],
-[3,"NR 06","2026-07-09"],[3,"NR 12","2026-07-09"],[3,"NR 18","2026-07-09"],[3,"NR 35","2026-07-10"],
-[16,"NR 06","2026-06-23"],[16,"NR 12","2026-06-23"],[16,"NR 18","2026-06-23"],[16,"NR 35","2026-06-24"],
-[22,"NR 06","2026-06-01"],[22,"NR 12","2026-06-01"],[22,"NR 18","2026-06-01"],[22,"NR 35","2026-06-02"],
-[28,"NR 06","2026-06-01"],[28,"NR 12","2026-06-01"],[28,"NR 18","2026-06-01"],[28,"NR 35","2026-06-02"],
-[29,"NR 06","2026-06-01"],[29,"NR 12","2026-06-01"],[29,"NR 18","2026-06-01"],[29,"NR 35","2026-06-02"],
-[4,"NR 06","2026-04-17"],[4,"NR 12","2026-04-17"],[4,"NR 18","2026-04-17"],[4,"NR 35","2026-04-20"],
-[24,"NR 06","2026-04-07"],[24,"NR 12","2026-04-07"],[24,"NR 18","2026-04-07"],[24,"NR 35","2026-04-06"],
-[11,"NR 06","2026-03-07"],[11,"NR 12","2026-03-07"],[11,"NR 18","2026-03-07"],[11,"NR 35","2026-04-06"],
-[18,"NR 06","2026-03-17"],[18,"NR 12","2026-03-17"],[18,"NR 18","2026-03-17"],[18,"NR 35","2026-03-18"],
-[27,"NR 06","2026-03-12"],[27,"NR 12","2026-03-12"],[27,"NR 18","2026-03-12"],[27,"NR 35","2026-03-13"],
-[17,"NR 06","2026-02-26"],[17,"NR 12","2026-02-26"],[17,"NR 18","2026-02-26"],[17,"NR 35","2026-02-27"],
-[10,"NR 06","2026-02-12"],[10,"NR 12","2026-02-12"],[10,"NR 18","2026-02-12"],[10,"NR 35","2026-02-13"],
-[23,"NR 06","2026-02-17"],[23,"NR 12","2026-02-17"],[23,"NR 18","2026-02-17"],[23,"NR 35","2026-02-18"],
-[19,"NR 06","2025-10-24"],[19,"NR 12","2025-10-24"],[19,"NR 18","2025-10-24"],[19,"NR 35","2025-10-28"],
-[1,"NR 06","2025-09-19"],[1,"NR 12","2025-09-19"],[1,"NR 18","2025-09-19"],[30,"NR 06","2025-09-16"],
-[30,"NR 12","2025-09-16"],[30,"NR 18","2025-09-16"],[30,"NR 35","2025-09-16"],[6,"NR 06","2025-08-13"],
-[6,"NR 12","2026-08-13"],[6,"NR 18","2026-08-13"],[6,"NR 35","2026-08-14"],[20,"NR 06","2025-07-28"],
-[20,"NR 12","2025-07-24"],[20,"NR 18","2025-07-24"],[20,"NR 35","2025-07-25"],[15,"NR 06","2025-03-28"],
-[15,"NR 12","2025-04-01"],[15,"NR 18","2025-03-31"],[15,"NR 35","2025-03-31"],[25,"NR 06","2025-03-28"],
-[25,"NR 18","2024-09-05"],[25,"NR 35","2024-09-06"],[14,"NR 06","2025-03-28"],[14,"NR 12","2025-03-03"],
-[14,"NR 18","2025-03-03"],[14,"NR 35","2025-03-04"],[12,"NR 06","2025-09-08"],[12,"NR 12","2025-02-17"],
-[12,"NR 18","2025-02-17"],[12,"NR 35","2025-02-17"],[13,"NR 06","2025-03-28"],[13,"NR 12","2025-02-03"],
-[13,"NR 18","2025-02-03"],[13,"NR 35","2025-02-04"],[33,"NR 06","2025-03-28"],[33,"NR 12","2024-11-14"],
-[33,"NR 18","2024-11-14"],[33,"NR 35","2024-11-15"],[5,"NR 06","2025-03-28"],[5,"NR 12","2024-11-14"],
-[5,"NR 18","2024-11-14"],[5,"NR 35","2024-11-15"],[21,"NR 06","2026-03-28"],[21,"NR 12","2024-11-14"],
-[21,"NR 18","2024-09-05"],[21,"NR 35","2024-09-06"]
-];
- 
-const seedASO=[
-[26,"Admissional","2026-08-04"],[31,"Admissional","2026-08-04"],[2,"Admissional","2026-08-13"],[7,"Admissional","2026-07-21"],
-[8,"Admissional","2026-07-21"],[9,"Admissional","2026-07-21"],[3,"Admissional","2026-06-23"],[16,"Admissional","2026-06-18"],
-[22,"Admissional","2026-05-25"],[28,"Admissional","2026-04-23"],[29,"Admissional","2026-04-23"],[4,"Admissional","2026-04-16"],
-[24,"Admissional","2026-03-12"],[11,"Admissional","2026-03-26"],[18,"Admissional","2026-03-11"],[27,"Admissional","2026-03-11"],
-[17,"Admissional","2026-02-19"],[10,"Admissional","2026-02-11"],[23,"Admissional","2026-02-12"],[19,"Admissional","2025-10-21"],
-[1,"Admissional","2025-09-12"],[30,"Admissional","2025-07-17"],[6,"Admissional","2026-08-05"],[20,"Admissional","2025-07-17"],
-[15,"Admissional","2025-03-28"],[25,"Admissional","2024-09-05"],[14,"Admissional","2025-03-03"],[12,"Admissional","2026-03-04"],
-[13,"Admissional","2025-02-03"],[33,"Admissional","2025-01-13"],[5,"Admissional","2024-09-14"],[21,"Admissional","2024-09-05"]
-];
- 
-let state={funcionarios:seedFuncionarios,treinamentos:seedTreinamentos.map(t=>({func:t[0],nr:t[1],data:t[2],val:2})),asos:seedASO.map(a=>({func:a[0],tipo:a[1],data:a[2],val:1})),vacinas:[{func:32,nome:'Antitetânica',data:'',val:10}]};
+let state={funcionarios:[],treinamentos:[],asos:[],vacinas:[]};
 let filtroFunc='ativos';
 let editCtx=null;
 let demitirId=null;
@@ -500,8 +447,130 @@ function idFunc(v){const n=Number(v);return v!==''&&v!=null&&!isNaN(n)?n:v;}
 function ordenarFuncionarios(){state.funcionarios.sort(porNome);}
 function nomeFunc(id){const f=state.funcionarios.find(x=>String(x.id)===String(id));return f?f.nome:'—';}
  
-function save(){try{localStorage.setItem(CHAVE,JSON.stringify(state));}catch(e){alert("⚠️ Não foi possível salvar no navegador. Se estiver abrindo pela pré-visualização do Google Drive, baixe o arquivo e abra direto do computador.");}}
-function load(){try{const raw=localStorage.getItem(CHAVE);if(!raw)return;const d=JSON.parse(raw);if(d&&Array.isArray(d.funcionarios)){state={funcionarios:d.funcionarios.filter(f=>f&&typeof f==='object').map(f=>Object.assign({nasc:'',adm:'',cargo:'',obra:'',status:'Ativo',demissao:''},f,{nome:f.nome||'Sem nome'})),treinamentos:Array.isArray(d.treinamentos)?d.treinamentos:[],asos:Array.isArray(d.asos)?d.asos:[],vacinas:Array.isArray(d.vacinas)?d.vacinas:[]};}}catch(e){}}
+/* ================= SERVIDOR (API) =================
+   Os dados ficam no banco da VPS. NÃO remover este bloco nem trocar save()
+   por localStorage: todas as telas salvam chamando save(). */
+let versaoServidor=0;
+let salvando=false,salvarDeNovo=false,pendente=false;
+let usuarioAtual='';
+function estadoVazio(){return{funcionarios:[],treinamentos:[],asos:[],vacinas:[]};}
+function normalizarEstado(d){
+  return{
+    funcionarios:(Array.isArray(d.funcionarios)?d.funcionarios:[]).filter(f=>f&&typeof f==='object').map(f=>Object.assign({nasc:'',adm:'',cargo:'',obra:'',status:'Ativo',demissao:''},f,{nome:f.nome||'Sem nome'})),
+    treinamentos:Array.isArray(d.treinamentos)?d.treinamentos:[],
+    asos:Array.isArray(d.asos)?d.asos:[],
+    vacinas:Array.isArray(d.vacinas)?d.vacinas:[]
+  };
+}
+async function api(metodo,url,corpo){
+  const op={method:metodo,headers:{},credentials:'same-origin',cache:'no-store'};
+  if(corpo!==undefined){op.headers['Content-Type']='application/json';op.body=JSON.stringify(corpo);}
+  const r=await fetch(url,op);
+  let j={};try{j=await r.json();}catch(e){}
+  return{status:r.status,ok:r.ok,json:j};
+}
+function setSync(txt,cls){const el=document.getElementById('sync-status');if(el){el.textContent=txt;el.className='sync '+(cls||'');}}
+function save(){pendente=true;enviarEstado();}
+async function enviarEstado(){
+  if(salvando){salvarDeNovo=true;return;}
+  salvando=true;salvarDeNovo=false;
+  setSync('⏳ Salvando...');
+  try{
+    const r=await api('PUT','/api/estado',{versao:versaoServidor,dados:state});
+    if(r.ok){
+      versaoServidor=r.json.versao;
+      if(!salvarDeNovo)pendente=false;
+      setSync('✔ Salvo','ok');
+    }else if(r.status===401){
+      setSync('⚠️ Não salvo','err');
+      mostrarLogin('Sua sessão expirou. Entre novamente para salvar suas alterações.');
+    }else if(r.status===409){
+      pendente=false;salvarDeNovo=false;
+      const quem=r.json.atualizado_por?' por "'+r.json.atualizado_por+'"':'';
+      alert('⚠️ Os dados foram alterados'+quem+' enquanto você editava.\n\nOs dados foram recarregados do servidor. Refaça sua última alteração.');
+      await carregarDoServidor();
+    }else{
+      setSync('⚠️ Não salvo','err');
+      alert('⚠️ Não foi possível salvar no servidor: '+(r.json.erro||('erro '+r.status)));
+    }
+  }catch(e){
+    setSync('⚠️ Sem conexão — não salvo','err');
+    alert('⚠️ Sem conexão com o servidor. A alteração NÃO foi salva ainda.\n\nEla será enviada automaticamente quando a conexão voltar (não feche a página).');
+  }
+  salvando=false;
+  if(salvarDeNovo)enviarEstado();
+}
+function dadosLocaisAntigos(){
+  try{const raw=localStorage.getItem(CHAVE);if(!raw)return null;const d=JSON.parse(raw);return d&&Array.isArray(d.funcionarios)&&d.funcionarios.length?normalizarEstado(d):null;}catch(e){return null;}
+}
+async function carregarDoServidor(){
+  setSync('⏳ Carregando...');
+  let r;
+  try{r=await api('GET','/api/estado');}catch(e){setSync('⚠️ Sem conexão','err');alert('⚠️ Sem conexão com o servidor. Tente recarregar a página.');return;}
+  if(r.status===401){mostrarLogin();return;}
+  if(!r.ok){setSync('⚠️ Erro','err');alert('⚠️ Erro ao carregar os dados: '+(r.json.erro||('erro '+r.status)));return;}
+  versaoServidor=r.json.versao;
+  if(r.json.dados){
+    state=normalizarEstado(r.json.dados);
+  }else{
+    state=estadoVazio();
+    const local=dadosLocaisAntigos();
+    if(local&&confirm('📥 O banco de dados está vazio, mas este navegador tem dados salvos ('+local.funcionarios.length+' funcionários).\n\nEnviar esses dados para o banco de dados?')){
+      state=local;ordenarFuncionarios();renderAll();save();return;
+    }
+  }
+  ordenarFuncionarios();
+  renderAll();
+  setSync('✔ Sincronizado','ok');
+}
+async function atualizarSeMudou(){
+  if(!usuarioAtual||pendente||salvando||document.querySelector('.modal.show'))return;
+  try{
+    const r=await api('GET','/api/estado');
+    if(r.status===401){mostrarLogin('Sua sessão expirou. Entre novamente.');return;}
+    if(r.ok&&r.json.dados&&r.json.versao!==versaoServidor&&!pendente&&!salvando){
+      versaoServidor=r.json.versao;
+      state=normalizarEstado(r.json.dados);
+      ordenarFuncionarios();renderAll();
+      setSync('🔄 Atualizado'+(r.json.atualizado_por?' ('+r.json.atualizado_por+')':''),'ok');
+    }
+  }catch(e){}
+}
+function mostrarUsuario(){setHTML('user-nome',esc(usuarioAtual));}
+function mostrarLogin(msg){
+  usuarioAtual='';
+  document.getElementById('login').classList.remove('hidden');
+  document.getElementById('login-erro').textContent=msg||'';
+  setTimeout(()=>{const el=document.getElementById('l-usuario');if(el)el.focus();},50);
+}
+async function fazerLogin(ev){
+  ev.preventDefault();
+  const btn=document.getElementById('l-btn'),erro=document.getElementById('login-erro');
+  btn.disabled=true;erro.textContent='';
+  try{
+    const r=await api('POST','/api/login',{usuario:document.getElementById('l-usuario').value,senha:document.getElementById('l-senha').value});
+    if(!r.ok){erro.textContent=r.json.erro||('Erro ao entrar ('+r.status+').');return;}
+    document.getElementById('l-senha').value='';
+    usuarioAtual=r.json.usuario;mostrarUsuario();
+    document.getElementById('login').classList.add('hidden');
+    if(pendente)enviarEstado();else await carregarDoServidor();
+  }catch(e){
+    erro.textContent='Sem conexão com o servidor.';
+  }finally{
+    btn.disabled=false;
+  }
+}
+async function sair(){
+  if(pendente&&!confirm('⚠️ Há alterações que ainda não foram salvas. Sair mesmo assim?'))return;
+  try{await api('POST','/api/logout');}catch(e){}
+  state=estadoVazio();versaoServidor=0;pendente=false;
+  renderAll();setSync('');
+  mostrarLogin();
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(pendente&&!salvando&&usuarioAtual)enviarEstado();else atualizarSeMudou();}});
+window.addEventListener('online',()=>{if(pendente&&usuarioAtual)enviarEstado();});
+window.addEventListener('beforeunload',e=>{if(pendente){e.preventDefault();e.returnValue='';}});
+setInterval(atualizarSeMudou,60000);
  
 /* ================= STATUS ================= */
 function statusVenc(data,valAnos){if(!data)return{txt:"Sem data",cls:"t-info"};const venc=addDias(data,(valAnos||1)*365);const d=diasAte(venc);if(d===null)return{txt:"Sem data",cls:"t-info"};if(d<0)return{txt:"VENCIDO",cls:"t-vencido"};if(d<=5)return{txt:"VENCE EM 5 DIAS",cls:"t-5"};if(d<=15)return{txt:"VENCE EM 15 DIAS",cls:"t-15"};if(d<=30)return{txt:"VENCE EM 30 DIAS",cls:"t-30"};return{txt:"VÁLIDO",cls:"t-ok"};}
@@ -1032,7 +1101,7 @@ function importarDados(event){
       const nt=Array.isArray(dados.treinamentos)?dados.treinamentos.length:0;
       const na=Array.isArray(dados.asos)?dados.asos.length:0;
       const nv=Array.isArray(dados.vacinas)?dados.vacinas.length:0;
-      if(!confirm("📥 Importar banco de dados?\n\nFuncionários: "+nf+"\nTreinamentos: "+nt+"\nASOs: "+na+"\nVacinas: "+nv+"\n\n⚠️ Isso SUBSTITUI todos os dados atuais do sistema.")){
+      if(!confirm("📥 Importar banco de dados?\n\nFuncionários: "+nf+"\nTreinamentos: "+nt+"\nASOs: "+na+"\nVacinas: "+nv+"\n\n⚠️ Isso SUBSTITUI todos os dados atuais do banco de dados, para TODOS os usuários.")){
         event.target.value='';
         return;
       }
@@ -1040,7 +1109,7 @@ function importarDados(event){
       dados.treinamentos=Array.isArray(dados.treinamentos)?dados.treinamentos:[];
       dados.asos=Array.isArray(dados.asos)?dados.asos:[];
       dados.vacinas=Array.isArray(dados.vacinas)?dados.vacinas:[];
-      state=dados;
+      state=normalizarEstado(dados);
       ordenarFuncionarios();
       save();
       renderAll();
@@ -1112,17 +1181,24 @@ function imprimirRelatorio(){
 }
  
 /* ================= INIT ================= */
-function init(){
+async function init(){
   const h=new Date();
   let extenso='';
   try{extenso=h.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});}catch(e){extenso=h.toLocaleDateString('pt-BR');}
   document.getElementById('today').textContent='Hoje: '+extenso;
-  load();
-  ordenarFuncionarios();
   document.querySelectorAll('.nav-item').forEach(el=>{
     el.addEventListener('click',()=>irPara(el.dataset.view));
   });
   renderAll();
+  try{
+    const r=await api('GET','/api/me');
+    if(!r.ok){mostrarLogin();return;}
+    usuarioAtual=r.json.usuario;mostrarUsuario();
+    document.getElementById('login').classList.add('hidden');
+    await carregarDoServidor();
+  }catch(e){
+    mostrarLogin('Sem conexão com o servidor.');
+  }
 }
 init();
  
