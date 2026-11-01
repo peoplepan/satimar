@@ -38,4 +38,4 @@ jobs:
 
       - name: Conferir se o site responde
         run: |
-          curl -fsS -o /dev/null -w "HTTP %{http_code}\n" -H "Host: peopleplanrh.com.br" "http://$VPS_HOST/"
+          curl -fsS -o /dev/null -w "HTTP %{http_code}\n" https://peopleplanrh.com.br/
